@@ -1,0 +1,54 @@
+# ---------- Java / Maven ----------
+target/
+!.mvn/wrapper/maven-wrapper.jar
+*.class
+*.jar
+*.war
+*.ear
+hs_err_pid*
+replay_pid*
+
+# ---------- IDE ----------
+.idea/
+*.iml
+*.iws
+*.ipr
+.vscode/
+.settings/
+.project
+.classpath
+.factorypath
+
+# ---------- 日志与运行时产物 ----------
+logs/
+*.log
+*.pid
+
+# ---------- 前端 ----------
+node_modules/
+dist/
+dist-ssr/
+.vite/
+*.local
+
+# ---------- 环境与密钥 ----------
+.env
+.env.*
+!.env.example
+application-local.yml
+application-local.yaml
+*.pem
+*.p12
+
+# ---------- 系统 ----------
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ---------- Maven 本地仓库（沙箱内隔离） ----------
+.m2repo/
+
+# ---------- 临时 ----------
+tmp/
+temp/
+*.tmp

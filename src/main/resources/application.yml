@@ -1,0 +1,138 @@
+server:
+  port: 8080
+  servlet:
+    context-path: /
+    encoding:
+      charset: UTF-8
+      enabled: true
+      force: true
+
+spring:
+  application:
+    name: zhiketong
+  profiles:
+    active: dev
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    # 本地开发默认连接；生产/答辩环境通过环境变量覆盖
+    url: jdbc:mysql://localhost:3306/zhiketong?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&rewriteBatchedStatements=true
+    username: ${MYSQL_USERNAME:root}
+    password: ${MYSQL_PASSWORD:246790}
+    hikari:
+      minimum-idle: 5
+      maximum-pool-size: 20
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+      pool-name: ZhiKeTongHikariCP
+  redis:
+    host: ${REDIS_HOST:localhost}
+    port: ${REDIS_PORT:6379}
+    password: ${REDIS_PASSWORD:}
+    database: 0
+    timeout: 3000ms
+    lettuce:
+      pool:
+        max-active: 16
+        max-idle: 8
+        min-idle: 2
+        max-wait: 3000ms
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: Asia/Shanghai
+    serialization:
+      write-dates-as-timestamps: false
+      fail-on-empty-beans: false
+    deserialization:
+      fail-on-unknown-properties: false
+    default-property-inclusion: non_null
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 20MB
+  mvc:
+    pathmatch:
+      matching-strategy: ant_path_matcher
+
+mybatis-plus:
+  mapper-locations: classpath*:/mapper/**/*.xml
+  type-aliases-package: com.zhiketong.entity
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+  global-config:
+    banner: false
+    db-config:
+      id-type: auto
+      logic-delete-field: deleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+      update-strategy: not_null
+
+# 业务自定义配置
+zhiketong:
+  jwt:
+    # HS256 密钥，长度必须 >= 32 字节
+    secret: ${JWT_SECRET:zhiketong-javaee-final-project-secret-key-2026}
+    expire-hours: ${JWT_EXPIRE_HOURS:2}
+    header: Authorization
+    prefix: "Bearer "
+  ai:
+    # 关闭时走知识库/兜底回复；开启后调用大模型
+    enabled: ${AI_ENABLED:true}
+    provider: ${AI_PROVIDER:deepseek}
+    base-url: ${AI_BASE_URL:https://api.deepseek.com}
+    # 不要把真实 Key 提交到仓库，使用环境变量注入
+    api-key: ${DEEPSEEK_API_KEY:}
+    model: ${AI_MODEL:deepseek-chat}
+    temperature: 0.3
+    max-tokens: 512
+    timeout-ms: 15000
+    # 单条用户消息带入的历史对话轮数
+    history-rounds: 6
+  chat:
+    queue-timeout-minutes: 10
+    max-agent-concurrent: 5
+    ai-confidence-threshold: 0.60
+    transfer-keywords: 转人工,人工客服,真人,投诉
+  sla:
+    scan-cron: "0 */5 * * * ?"
+    # 首次响应时限（分钟）：P0/P1/P2/P3
+    first-response-minutes:
+      P0: 30
+      P1: 120
+      P2: 480
+      P3: 1440
+    # 解决时限（分钟）
+    resolve-minutes:
+      P0: 120
+      P1: 480
+      P2: 1440
+      P3: 4320
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always
+
+logging:
+  level:
+    root: info
+    com.zhiketong: debug
+    org.springframework.security: info
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+  file:
+    name: logs/zhiketong.log
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    tags-sorter: alpha
+    operations-sorter: alpha
