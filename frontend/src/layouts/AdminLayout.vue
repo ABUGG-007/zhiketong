@@ -1,28 +1,55 @@
 <template>
-  <div class="shell" :class="{ collapsed }">
-    <aside class="sidebar">
+  <div class="shell" :class="{ collapsed, 'is-mobile-open': mobileOpen }">
+    <a class="zk-skip-link" href="#main-content">跳到主内容</a>
+
+    <div
+      v-if="mobileOpen"
+      class="sidebar-overlay"
+      aria-hidden="true"
+      @click="closeMobile"
+    />
+
+    <aside id="app-sidebar" class="sidebar" aria-label="主导航">
       <div class="brand">
-        <div class="brand-logo">智</div>
-        <div v-if="!collapsed" class="brand-text">
+        <div class="brand-logo" aria-hidden="true">智</div>
+        <div v-if="!collapsed || mobileOpen" class="brand-text">
           <div class="brand-name">智客通</div>
           <div class="brand-sub">智能客服工作台</div>
         </div>
+        <button
+          v-if="mobileOpen"
+          type="button"
+          class="sidebar-close"
+          aria-label="关闭导航菜单"
+          @click="closeMobile"
+        >
+          <el-icon><Close /></el-icon>
+        </button>
       </div>
 
-      <nav class="nav">
+      <nav class="nav" aria-label="功能菜单">
         <div v-for="group in groups" :key="group.name" class="nav-group">
-          <div v-if="!collapsed" class="nav-group-label">{{ group.name }}</div>
+          <div v-if="!collapsed || mobileOpen" class="nav-group-label">{{ group.name }}</div>
           <el-tooltip
             v-for="item in group.items"
             :key="item.path"
             :content="item.title"
             placement="right"
-            :disabled="!collapsed"
+            :disabled="!collapsed || mobileOpen"
           >
-            <router-link :to="item.path" class="nav-item" active-class="is-active">
+            <router-link
+              :to="item.path"
+              class="nav-item"
+              active-class="is-active"
+              @click="closeMobile"
+            >
               <el-icon class="nav-icon"><component :is="iconOf(item.icon)" /></el-icon>
-              <span v-if="!collapsed" class="nav-text">{{ item.title }}</span>
-              <span v-if="!collapsed && item.name === 'sessions' && waitingCount > 0" class="nav-count">
+              <span v-if="!collapsed || mobileOpen" class="nav-text">{{ item.title }}</span>
+              <span
+                v-if="(!collapsed || mobileOpen) && item.name === 'sessions' && waitingCount > 0"
+                class="nav-count"
+                :aria-label="`${waitingCount} 个会话等待接入`"
+              >
                 {{ waitingCount }}
               </span>
             </router-link>
@@ -31,13 +58,13 @@
       </nav>
 
       <div class="sidebar-foot">
-        <div class="side-card" :class="{ mini: collapsed }">
+        <div class="side-card" :class="{ mini: collapsed && !mobileOpen }">
           <div class="side-row">
-            <i class="side-dot" :class="healthTone" />
-            <span v-if="!collapsed" class="side-label">系统服务</span>
+            <i class="side-dot" :class="healthTone" aria-hidden="true" />
+            <span v-if="!collapsed || mobileOpen" class="side-label">系统服务</span>
           </div>
-          <div v-if="!collapsed" class="side-value">{{ healthText }}</div>
-          <div v-if="!collapsed" class="side-note">M3 演示版 · v1.0</div>
+          <div v-if="!collapsed || mobileOpen" class="side-value">{{ healthText }}</div>
+          <div v-if="!collapsed || mobileOpen" class="side-note">M3 演示版 · v1.0</div>
         </div>
       </div>
     </aside>
@@ -45,30 +72,51 @@
     <div class="main">
       <header class="topbar">
         <div class="topbar-left">
-          <button class="icon-btn" type="button" @click="collapsed = !collapsed">
+          <button
+            type="button"
+            class="icon-btn menu-btn"
+            aria-label="打开导航菜单"
+            :aria-expanded="mobileOpen"
+            aria-controls="app-sidebar"
+            @click="toggleMobile"
+          >
+            <el-icon><Menu /></el-icon>
+          </button>
+          <button
+            type="button"
+            class="icon-btn collapse-btn"
+            :aria-label="collapsed ? '展开侧栏' : '收起侧栏'"
+            :aria-expanded="!collapsed"
+            @click="collapsed = !collapsed"
+          >
             <el-icon><Expand v-if="collapsed" /><Fold v-else /></el-icon>
           </button>
-          <div class="crumb">
+          <div class="crumb" aria-label="面包屑">
             <span class="crumb-root">运营控制台</span>
-            <span class="crumb-sep">/</span>
-            <span class="crumb-current">{{ route.meta.title || '数据看板' }}</span>
+            <span class="crumb-sep" aria-hidden="true">/</span>
+            <span class="crumb-current" aria-current="page">{{ route.meta.title || '数据看板' }}</span>
           </div>
         </div>
 
         <div class="topbar-right">
-          <div class="health-badge" :class="healthTone">
-            <i class="health-dot" />
+          <div
+            class="health-badge"
+            :class="healthTone"
+            role="status"
+            :title="`MySQL ${health.mysql} · Redis ${health.redis}`"
+          >
+            <i class="health-dot" aria-hidden="true" />
             <span>{{ healthShort }}</span>
           </div>
-          <span class="topbar-divider" />
+          <span class="topbar-divider" aria-hidden="true" />
           <el-dropdown trigger="click" @command="onUserCommand">
-            <div class="user-trigger">
-              <div class="avatar">{{ avatarText }}</div>
+            <div class="user-trigger" role="button" tabindex="0" aria-label="用户菜单">
+              <div class="avatar" aria-hidden="true">{{ avatarText }}</div>
               <div class="user-meta">
                 <div class="user-name">{{ user?.nickname || user?.username || '未登录' }}</div>
                 <div class="user-role">{{ roleLabel }}</div>
               </div>
-              <el-icon class="caret"><ArrowDown /></el-icon>
+              <el-icon class="caret" aria-hidden="true"><ArrowDown /></el-icon>
             </div>
             <template #dropdown>
               <el-dropdown-menu>
@@ -87,7 +135,7 @@
         </div>
       </header>
 
-      <main class="content">
+      <main id="main-content" class="content" tabindex="-1">
         <router-view v-slot="{ Component }">
           <transition name="zk-fade" mode="out-in">
             <component :is="Component" :key="route.path" />
@@ -99,18 +147,20 @@
 </template>
 
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import {
   ArrowDown,
   ChatDotRound,
   ChatLineSquare,
+  Close,
   Collection,
   DataAnalysis,
   Expand,
   Fold,
   Headset,
+  Menu,
   SwitchButton,
   Tickets,
   User
@@ -123,7 +173,27 @@ const router = useRouter()
 const route = useRoute()
 
 const collapsed = ref(false)
+const mobileOpen = ref(false)
 const user = ref(getUser())
+
+function toggleMobile() {
+  mobileOpen.value = !mobileOpen.value
+}
+
+function closeMobile() {
+  mobileOpen.value = false
+}
+
+watch(
+  () => route.path,
+  () => {
+    mobileOpen.value = false
+  }
+)
+
+watch(mobileOpen, (open) => {
+  document.body.style.overflow = open ? 'hidden' : ''
+})
 
 const roleLabel = computed(() => dictLabel(ROLE_DICT, user.value?.roleCode, '访客'))
 const avatarText = computed(() => {
@@ -241,6 +311,7 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   if (healthTimer) window.clearInterval(healthTimer)
+  document.body.style.overflow = ''
 })
 </script>
 
@@ -664,6 +735,147 @@ onBeforeUnmount(() => {
   }
   .topbar {
     padding: 0 14px;
+  }
+}
+/* ---------------- v2：可访问性与移动端抽屉导航 ---------------- */
+.sidebar {
+  height: 100vh;
+  height: 100dvh;
+}
+
+.sidebar-close {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  margin-left: auto;
+  border-radius: 10px;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  background: transparent;
+  color: #cbd5e1;
+  cursor: pointer;
+}
+
+.sidebar-close:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+}
+
+.sidebar-overlay {
+  display: none;
+}
+
+.menu-btn {
+  display: none;
+}
+
+.nav-item {
+  min-height: 44px;
+  height: 44px;
+}
+
+.nav-item:focus-visible {
+  outline: 2px solid #2dd4bf;
+  outline-offset: -2px;
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.sidebar :focus-visible,
+.topbar :focus-visible {
+  outline: 2px solid var(--zk-teal-dark);
+  outline-offset: 2px;
+}
+
+@media (max-width: 1024px) {
+  .menu-btn {
+    display: grid;
+  }
+
+  .collapse-btn {
+    display: none;
+  }
+
+  .sidebar {
+    position: fixed;
+    inset: 0 auto 0 0;
+    width: 268px;
+    flex-basis: 268px;
+    height: 100dvh;
+    transform: translateX(-102%);
+    transition: transform var(--zk-dur-base) var(--zk-ease-out);
+    z-index: var(--zk-z-overlay);
+    box-shadow: none;
+  }
+
+  .shell .sidebar,
+  .shell.collapsed .sidebar {
+    width: 268px;
+    flex-basis: 268px;
+  }
+
+  .shell.is-mobile-open .sidebar {
+    transform: translateX(0);
+    box-shadow: 30px 0 60px -30px rgba(0, 0, 0, 0.65);
+  }
+
+  .sidebar-overlay {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(7, 12, 22, 0.55);
+    backdrop-filter: blur(2px);
+    z-index: calc(var(--zk-z-overlay) - 1);
+  }
+
+  .main {
+    width: 100%;
+  }
+
+  .content {
+    min-height: calc(100dvh - 64px);
+  }
+}
+
+@media (max-width: 640px) {
+  .topbar {
+    height: 58px;
+    flex-basis: 58px;
+    padding: 0 12px;
+  }
+
+  .topbar-left {
+    gap: 8px;
+  }
+
+  .icon-btn {
+    width: 40px;
+    height: 40px;
+  }
+
+  .health-badge {
+    height: 28px;
+    padding: 0 9px;
+  }
+
+  .user-meta {
+    display: none;
+  }
+
+  .avatar {
+    width: 32px;
+    height: 32px;
+  }
+
+  .user-trigger {
+    padding: 3px;
+  }
+
+  .crumb {
+    font-size: 12px;
+  }
+
+  .content {
+    min-height: calc(100dvh - 58px);
   }
 }
 </style>

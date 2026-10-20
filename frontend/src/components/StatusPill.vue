@@ -1,6 +1,6 @@
 <template>
   <span class="pill" :class="`pill--${tone}`">
-    <i v-if="dot" class="pill-dot" />
+    <i v-if="dot" class="pill-dot" aria-hidden="true" />
     {{ label }}
   </span>
 </template>
@@ -22,9 +22,10 @@ defineProps({
   border-radius: 999px;
   font-size: 12px;
   font-weight: 600;
-  line-height: 1.5;
+  line-height: 1.4;
   white-space: nowrap;
   border: 1px solid transparent;
+  font-variant-numeric: tabular-nums;
 }
 
 .pill-dot {
@@ -32,41 +33,42 @@ defineProps({
   height: 5px;
   border-radius: 50%;
   background: currentColor;
+  flex: 0 0 5px;
 }
 
 .pill--teal {
   color: #0f766e;
   background: #e6fbf7;
-  border-color: #bff0e7;
+  border-color: #b8e9df;
 }
 
 .pill--indigo {
   color: #4338ca;
   background: #eef0ff;
-  border-color: #d8dafb;
+  border-color: #d5d8fb;
 }
 
 .pill--amber {
-  color: #b45309;
+  color: #a34d08;
   background: #fff7e6;
-  border-color: #fde3b4;
+  border-color: #f7ddab;
 }
 
 .pill--red {
-  color: #be123c;
+  color: #b4123e;
   background: #fff0f3;
-  border-color: #fbd0da;
+  border-color: #f7c8d3;
 }
 
 .pill--green {
-  color: #047857;
+  color: #046c4e;
   background: #e9fbf3;
-  border-color: #c3f0dd;
+  border-color: #bdebd7;
 }
 
 .pill--slate {
-  color: #4b5b70;
+  color: #475569;
   background: #f1f5fa;
-  border-color: #e2e8f0;
+  border-color: #dfe6f0;
 }
 </style>

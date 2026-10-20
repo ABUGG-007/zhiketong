@@ -34,24 +34,27 @@ defineProps({
 }
 
 .head-main h1 {
-  font-size: 22px;
-  font-weight: 700;
-  letter-spacing: -0.3px;
+  font-size: 25px;
+  font-weight: 720;
+  letter-spacing: -0.4px;
+  line-height: 1.25;
   display: flex;
   align-items: center;
   gap: 10px;
   color: var(--zk-text);
+  text-wrap: balance;
 }
 
 .head-badge {
   font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.4px;
-  color: var(--zk-teal-dark);
+  font-weight: 650;
+  letter-spacing: 0.3px;
+  color: var(--zk-teal-deep);
   background: var(--zk-teal-soft);
-  border: 1px solid #c4f1e9;
+  border: 1px solid var(--zk-teal-line);
   padding: 3px 8px;
   border-radius: 999px;
+  white-space: nowrap;
 }
 
 .head-actions {
@@ -64,6 +67,14 @@ defineProps({
 @media (max-width: 720px) {
   .page-head {
     align-items: flex-start;
+  }
+
+  .head-main h1 {
+    font-size: 21px;
+  }
+
+  .head-actions {
+    width: 100%;
   }
 }
 </style>

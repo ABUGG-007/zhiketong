@@ -2,9 +2,10 @@
   <div class="login">
     <!-- 品牌左栏 -->
     <section class="hero">
-      <div class="hero-grid" />
-      <div class="hero-glow hero-glow--teal" />
-      <div class="hero-glow hero-glow--indigo" />
+      <!-- 左侧能力展示：装饰性内容，屏幕阅读器跳过 -->
+      <div class="hero-grid" aria-hidden="true" />
+      <div class="hero-glow hero-glow--teal" aria-hidden="true" />
+      <div class="hero-glow hero-glow--indigo" aria-hidden="true" />
 
       <div class="hero-inner">
         <div class="brand">
@@ -41,7 +42,7 @@
         </ul>
 
         <!-- 演示用对话示意 -->
-        <div class="chat-preview">
+        <div class="chat-preview" aria-hidden="true">
           <div class="chat-line chat-line--user">
             <span class="chat-bubble">忘记密码按什么步骤找回？</span>
           </div>
@@ -87,6 +88,8 @@
           :rules="rules"
           label-position="top"
           class="login-form"
+          :aria-describedby="errorMessage ? 'login-error' : undefined"
+          :aria-busy="loading"
           @submit.prevent="onSubmit"
         >
           <el-form-item label="账号" prop="username">
@@ -95,6 +98,8 @@
               size="large"
               placeholder="请输入账号"
               autocomplete="username"
+              autofocus
+              aria-label="账号"
               :prefix-icon="User"
             />
           </el-form-item>
@@ -106,12 +111,13 @@
               show-password
               placeholder="请输入密码"
               autocomplete="current-password"
+              aria-label="密码"
               :prefix-icon="Lock"
             />
           </el-form-item>
 
-          <div v-if="errorMessage" class="form-error">
-            <el-icon><WarningFilled /></el-icon>
+          <div v-if="errorMessage" id="login-error" class="form-error" role="alert" aria-live="assertive">
+            <el-icon aria-hidden="true"><WarningFilled /></el-icon>
             <span>{{ errorMessage }}</span>
           </div>
 
@@ -137,6 +143,7 @@
               :key="account.username"
               type="button"
               class="demo-chip"
+              :aria-label="`使用演示账号 ${account.username}（${account.roleLabel}）`"
               @click="fillAccount(account)"
             >
               <span class="chip-role" :class="account.tone">{{ account.roleLabel }}</span>
@@ -145,8 +152,8 @@
           </div>
         </div>
 
-        <div class="panel-foot">
-          <span class="foot-dot" :class="healthTone" />
+        <div class="panel-foot" role="status" aria-live="polite">
+          <span class="foot-dot" :class="healthTone" aria-hidden="true" />
           <span>{{ healthText }}</span>
           <span class="foot-sep">·</span>
           <span>接口 {{ apiHint }}</span>
@@ -831,6 +838,89 @@ onMounted(async () => {
   }
   .hero-copy h1 {
     font-size: 32px;
+  }
+}
+/* ---------------- v2：对比度、焦点与移动端 ---------------- */
+.login {
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+.panel {
+  overflow-y: auto;
+}
+
+.hero-desc {
+  color: #a7b6c9;
+}
+
+.cap-desc {
+  color: #a3b3c8;
+}
+
+.chat-time {
+  color: #94a3b8;
+}
+
+.hero-footer {
+  color: #94a3b8;
+}
+
+.demo-chip {
+  min-height: 48px;
+  transition: border-color var(--zk-dur-fast) var(--zk-ease-out),
+    background-color var(--zk-dur-fast) var(--zk-ease-out),
+    transform var(--zk-dur-fast) var(--zk-ease-out),
+    box-shadow var(--zk-dur-fast) var(--zk-ease-out);
+}
+
+.demo-chip:hover {
+  transform: translateY(-1px);
+}
+
+.demo-chip:active {
+  transform: translateY(0);
+}
+
+.demo-chip:focus-visible {
+  outline: 2px solid var(--zk-teal-dark);
+  outline-offset: 2px;
+}
+
+.login-form :deep(.el-input__wrapper) {
+  transition: box-shadow var(--zk-dur-fast) var(--zk-ease-out);
+}
+
+@media (max-width: 640px) {
+  .panel {
+    padding: 28px 20px;
+    align-items: flex-start;
+  }
+
+  .panel-inner {
+    max-width: 100%;
+  }
+
+  .panel-head h2 {
+    font-size: 22px;
+  }
+
+  .demo-chips {
+    gap: 6px;
+  }
+
+  .demo-chip {
+    padding: 8px;
+  }
+
+  .hero-inner {
+    padding: 28px 22px;
+  }
+}
+
+@media (max-width: 380px) {
+  .demo-chips {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 </style>

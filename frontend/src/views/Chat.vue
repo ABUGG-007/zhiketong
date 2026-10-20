@@ -33,9 +33,17 @@
           </div>
         </header>
 
-        <div ref="scrollRef" class="chat-scroll">
+        <div
+          ref="scrollRef"
+          class="chat-scroll"
+          role="log"
+          aria-live="polite"
+          aria-label="对话消息"
+          :aria-busy="sending"
+          @scroll="onScroll"
+        >
           <div v-for="msg in messages" :key="msg.id" class="msg" :class="msg.role">
-            <div v-if="msg.role === 'ai'" class="msg-avatar">AI</div>
+            <div v-if="msg.role === 'ai'" class="msg-avatar" aria-hidden="true">AI</div>
             <div class="msg-body">
               <div class="bubble" :class="{ 'bubble--ai': msg.role === 'ai', 'bubble--error': msg.error }">
                 <span class="bubble-text">{{ msg.content }}</span>
@@ -52,21 +60,32 @@
                 </span>
               </div>
             </div>
-            <div v-if="msg.role === 'user'" class="msg-avatar msg-avatar--user">
+            <div v-if="msg.role === 'user'" class="msg-avatar msg-avatar--user" aria-hidden="true">
               {{ (user?.nickname || '我').slice(0, 1) }}
             </div>
           </div>
 
-          <div v-if="sending" class="msg ai">
-            <div class="msg-avatar">AI</div>
+          <div v-if="sending" class="msg ai" role="status" aria-label="AI 正在思考">
+            <div class="msg-avatar" aria-hidden="true">AI</div>
             <div class="msg-body">
               <div class="bubble bubble--ai">
-                <span class="typing"><i /><i /><i /></span>
+                <span class="typing" aria-hidden="true"><i /><i /><i /></span>
                 <span class="typing-text">正在思考…</span>
               </div>
             </div>
           </div>
         </div>
+
+        <button
+          v-if="showJump"
+          type="button"
+          class="jump-btn"
+          aria-label="跳到最新消息"
+          @click="scrollToBottom"
+        >
+          <el-icon aria-hidden="true"><ArrowDown /></el-icon>
+          最新消息
+        </button>
 
         <div class="chat-input">
           <div class="quick-row">
@@ -84,12 +103,14 @@
           </div>
           <div class="input-row">
             <el-input
+              ref="inputRef"
               v-model="input"
               type="textarea"
               :rows="2"
               resize="none"
               maxlength="500"
               show-word-limit
+              aria-label="输入消息内容"
               placeholder="输入问题后按 Enter 发送，Shift + Enter 换行"
               class="chat-textarea"
               @keydown.enter.exact.prevent="send()"
@@ -97,11 +118,12 @@
             <el-button
               type="primary"
               class="send-btn"
+              aria-label="发送消息"
               :loading="sending"
               :disabled="!input.trim() || sending"
               @click="send()"
             >
-              <el-icon><Promotion /></el-icon>
+              <el-icon aria-hidden="true"><Promotion /></el-icon>
               <span>发送</span>
             </el-button>
           </div>
@@ -161,7 +183,7 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
-import { Delete, Promotion, Service } from '@element-plus/icons-vue'
+import { ArrowDown, Delete, Promotion, Service } from '@element-plus/icons-vue'
 import PageHeader from '@/components/PageHeader.vue'
 import { sendAiMessage } from '@/api'
 import { getToken, getUser } from '@/api/http'
@@ -170,11 +192,13 @@ import { nowClock } from '@/utils/dict'
 const user = getUser()
 
 const scrollRef = ref(null)
+const inputRef = ref(null)
 const input = ref('')
 const sending = ref(false)
 const apiOk = ref(false)
 const currentModel = ref('deepseek-chat')
 const messages = ref([])
+const showJump = ref(false)
 
 let messageSeq = 0
 const nextId = () => {
@@ -192,7 +216,7 @@ function greetingMessage() {
     id: nextId(),
     role: 'ai',
     content:
-      '你好，我是智客通智能助手 👋\n我可以帮你查询订单、处理退款、找回密码，也可以解答产品使用问题。如果问题比较复杂，随时可以申请转人工。',
+      '你好，我是智客通智能助手。\n我可以帮你查询订单、处理退款、找回密码，也可以解答产品使用问题。如果问题比较复杂，随时可以申请转人工。',
     time: nowClock()
   }
 }
@@ -206,8 +230,17 @@ function resetChat() {
 function scrollToBottom() {
   nextTick(() => {
     const el = scrollRef.value
-    if (el) el.scrollTop = el.scrollHeight
+    if (el) {
+      el.scrollTop = el.scrollHeight
+      showJump.value = false
+    }
   })
+}
+
+function onScroll() {
+  const el = scrollRef.value
+  if (!el) return
+  showJump.value = el.scrollHeight - el.scrollTop - el.clientHeight > 120
 }
 
 /* ---------------- 发送消息 ---------------- */
@@ -258,6 +291,7 @@ async function send(text) {
   } finally {
     sending.value = false
     scrollToBottom()
+    nextTick(() => inputRef.value?.focus())
   }
 }
 
@@ -931,6 +965,146 @@ onBeforeUnmount(() => {
   }
   .chat-head-right {
     display: none;
+  }
+}
+/* ---------- v2：可访问性、回到底部与移动端 ---------- */
+.chat-main {
+  position: relative;
+  height: calc(100vh - 196px);
+  height: calc(100dvh - 196px);
+}
+
+.chat-scroll {
+  scrollbar-gutter: stable;
+  overscroll-behavior: contain;
+}
+
+.chat-scroll:focus-visible {
+  outline: 2px solid var(--zk-teal-dark);
+  outline-offset: -2px;
+}
+
+.jump-btn {
+  position: absolute;
+  right: 20px;
+  bottom: 132px;
+  z-index: 5;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 36px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid var(--zk-border-strong);
+  background: #fff;
+  color: var(--zk-text-2);
+  font-size: 12px;
+  font-weight: 550;
+  cursor: pointer;
+  box-shadow: var(--zk-shadow-md);
+  transition: background-color var(--zk-dur-fast) var(--zk-ease-out),
+    border-color var(--zk-dur-fast) var(--zk-ease-out),
+    transform var(--zk-dur-fast) var(--zk-ease-out);
+}
+
+.jump-btn:hover {
+  background: var(--zk-surface-2);
+  border-color: var(--zk-teal-line);
+  transform: translateY(-1px);
+}
+
+.jump-btn:focus-visible {
+  outline: 2px solid var(--zk-teal-dark);
+  outline-offset: 2px;
+}
+
+.quick-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 4px 12px;
+}
+
+.quick-chip:focus-visible {
+  outline: 2px solid var(--zk-teal-dark);
+  outline-offset: 2px;
+}
+
+.send-btn {
+  height: 44px;
+  min-width: 104px;
+  border-radius: 11px;
+}
+
+.chat-textarea :deep(.el-textarea__inner) {
+  min-height: 64px;
+  padding: 10px 12px;
+}
+
+.bubble {
+  line-height: 1.75;
+}
+
+@media (max-width: 640px) {
+  .chat-shell {
+    gap: 12px;
+  }
+
+  .chat-main {
+    height: calc(100dvh - 172px);
+    min-height: 480px;
+  }
+
+  .chat-head {
+    padding: 12px 14px;
+  }
+
+  .chat-scroll {
+    padding: 16px 14px 10px;
+    gap: 14px;
+  }
+
+  .msg {
+    max-width: 95%;
+  }
+
+  .bubble {
+    font-size: 13.5px;
+    line-height: 1.7;
+  }
+
+  .chat-input {
+    padding: 10px 12px 12px;
+  }
+
+  .quick-row {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    scrollbar-width: thin;
+  }
+
+  .quick-chip {
+    flex: 0 0 auto;
+  }
+
+  .input-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .send-btn {
+    width: 100%;
+    height: 44px;
+  }
+
+  .chat-side .side-card {
+    min-width: 100%;
+  }
+
+  .jump-btn {
+    right: 12px;
+    bottom: 158px;
   }
 }
 </style>

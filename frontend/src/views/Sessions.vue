@@ -3,7 +3,7 @@
     <PageHeader
       eyebrow="SESSIONS"
       title="会话管理"
-      description="查看 AI 接待、人工排队、人工中与已结束的会话。点击任意行可查看会话生命周期时间线。"
+      description="查看 AI 接待、人工排队、人工中与已结束的会话。可点击行或使用「查看」按钮打开会话生命周期时间线。"
       badge="演示数据"
     >
       <template #actions>
@@ -13,7 +13,13 @@
 
     <div class="zk-card">
       <div class="zk-toolbar">
-        <el-select v-model="filters.status" placeholder="全部状态" clearable @change="search">
+        <el-select
+          v-model="filters.status"
+          placeholder="全部状态"
+          clearable
+          aria-label="按会话状态筛选"
+          @change="search"
+        >
           <el-option
             v-for="option in SESSION_STATUS_OPTIONS"
             :key="option.value"
@@ -22,83 +28,119 @@
           />
         </el-select>
         <div class="grow" />
-        <span class="toolbar-meta">共 <b>{{ total }}</b> 条会话</span>
+        <span class="toolbar-meta" aria-live="polite">共 <b class="zk-num">{{ total }}</b> 条会话</span>
       </div>
 
-      <el-table
-        v-loading="loading"
-        :data="rows"
-        row-key="id"
-        class="session-table"
-        @row-click="openDetail"
+      <div
+        class="table-scroll"
+        role="region"
+        aria-label="会话列表"
+        tabindex="0"
+        :aria-busy="loading ? 'true' : 'false'"
       >
-        <el-table-column label="会话号" width="142">
-          <template #default="{ row }">
-            <span class="order-no">{{ row.sessionNo }}</span>
-          </template>
-        </el-table-column>
-        <el-table-column label="状态" width="112">
-          <template #default="{ row }">
-            <StatusPill
-              :label="dictLabel(SESSION_STATUS_DICT, row.status)"
-              :tone="dictTone(SESSION_STATUS_DICT, row.status)"
-              dot
-            />
-          </template>
-        </el-table-column>
-        <el-table-column label="用户" width="104" show-overflow-tooltip>
-          <template #default="{ row }">
-            <span class="person">{{ row.userName || '—' }}</span>
-          </template>
-        </el-table-column>
-        <el-table-column label="接待坐席" width="104">
-          <template #default="{ row }">
-            <span v-if="row.agentName" class="person">{{ row.agentName }}</span>
-            <span v-else class="zk-muted">AI / 未分配</span>
-          </template>
-        </el-table-column>
-        <el-table-column label="消息数" width="86" align="right">
-          <template #default="{ row }">
-            <span class="zk-num msg-count">{{ row.messageCount ?? 0 }}</span>
-          </template>
-        </el-table-column>
-        <el-table-column label="评分" width="132">
-          <template #default="{ row }">
-            <span v-if="Number(row.rating) > 0" class="stars">
+        <el-table
+          v-loading="loading"
+          :data="rows"
+          row-key="id"
+          aria-label="会话列表"
+          :row-class-name="rowClassName"
+          @row-click="openDetail"
+        >
+          <el-table-column label="会话号" width="132">
+            <template #default="{ row }">
+              <span class="order-no">{{ row.sessionNo }}</span>
+            </template>
+          </el-table-column>
+          <el-table-column label="状态" width="104">
+            <template #default="{ row }">
+              <StatusPill
+                :label="dictLabel(SESSION_STATUS_DICT, row.status)"
+                :tone="dictTone(SESSION_STATUS_DICT, row.status)"
+                dot
+              />
+            </template>
+          </el-table-column>
+          <el-table-column label="用户" width="92" show-overflow-tooltip>
+            <template #default="{ row }">
+              <span class="person">{{ row.userName || '—' }}</span>
+            </template>
+          </el-table-column>
+          <el-table-column label="接待坐席" width="96">
+            <template #default="{ row }">
+              <span v-if="row.agentName" class="person">{{ row.agentName }}</span>
+              <span v-else class="zk-muted">AI / 未分配</span>
+            </template>
+          </el-table-column>
+          <el-table-column label="消息数" width="78" align="right">
+            <template #default="{ row }">
+              <span class="zk-num msg-count">{{ row.messageCount ?? 0 }}</span>
+            </template>
+          </el-table-column>
+          <el-table-column label="评分" width="112" align="right">
+            <template #default="{ row }">
               <span
-                v-for="n in 5"
-                :key="n"
-                :class="{ 'empty-star': n > Number(row.rating) }"
-              >★</span>
-            </span>
-            <span v-else class="zk-muted">未评价</span>
-          </template>
-        </el-table-column>
-        <el-table-column label="排队进入" width="154">
-          <template #default="{ row }">
-            <span class="cell-time">{{ formatDateTime(row.queueEnterTime) }}</span>
-          </template>
-        </el-table-column>
-        <el-table-column label="结束时间" width="154">
-          <template #default="{ row }">
-            <span class="cell-time">{{ formatDateTime(row.endTime) }}</span>
-          </template>
-        </el-table-column>
-        <el-table-column label="创建时间" width="154">
-          <template #default="{ row }">
-            <span class="cell-time">{{ formatDateTime(row.createTime) }}</span>
-          </template>
-        </el-table-column>
+                v-if="Number(row.rating) > 0"
+                class="rating-cell"
+                role="img"
+                :aria-label="`满意度评分 ${row.rating} 分，满分 5 分`"
+              >
+                <span class="stars" aria-hidden="true">
+                  <span
+                    v-for="n in 5"
+                    :key="n"
+                    :class="{ 'empty-star': n > Number(row.rating) }"
+                  >★</span>
+                </span>
+                <span class="rating-num zk-num" aria-hidden="true">{{ row.rating }}</span>
+              </span>
+              <span v-else class="zk-muted">未评价</span>
+            </template>
+          </el-table-column>
+          <el-table-column label="排队进入" width="140">
+            <template #default="{ row }">
+              <span class="cell-time">{{ formatDateTime(row.queueEnterTime) }}</span>
+            </template>
+          </el-table-column>
+          <el-table-column label="结束时间" width="140">
+            <template #default="{ row }">
+              <span class="cell-time">{{ formatDateTime(row.endTime) }}</span>
+            </template>
+          </el-table-column>
+          <el-table-column label="创建时间" width="140">
+            <template #default="{ row }">
+              <span class="cell-time">{{ formatDateTime(row.createTime) }}</span>
+            </template>
+          </el-table-column>
+          <el-table-column label="操作" width="76">
+            <template #default="{ row }">
+              <el-button
+                link
+                type="primary"
+                class="view-btn"
+                :aria-label="`查看会话 ${row.sessionNo} 的详情`"
+                @click.stop="openDetail(row)"
+              >
+                查看
+              </el-button>
+            </template>
+          </el-table-column>
 
-        <template #empty>
-          <div class="table-empty">
-            <div class="empty-icon"><el-icon><ChatLineSquare /></el-icon></div>
-            <p>{{ error || '暂无匹配的会话' }}</p>
-            <span v-if="!error" class="empty-hint">切换状态筛选，或等待种子会话数据导入</span>
-            <el-button v-else size="small" @click="load">重新加载</el-button>
-          </div>
-        </template>
-      </el-table>
+          <template #empty>
+            <div class="table-empty">
+              <div class="empty-icon" aria-hidden="true">
+                <el-icon><ChatLineSquare /></el-icon>
+              </div>
+              <p>{{ error || '暂无匹配的会话' }}</p>
+              <span v-if="error" class="empty-hint">请确认后端 /api/demo/sessions 已就绪</span>
+              <span v-else-if="filters.status" class="empty-hint">当前状态下没有会话，试试其他状态</span>
+              <span v-else class="empty-hint">还没有会话，或种子会话数据尚未导入</span>
+              <el-button v-if="error" @click="load">重新加载</el-button>
+              <el-button v-else-if="filters.status" @click="reset">清空筛选条件</el-button>
+              <el-button v-else @click="load">刷新列表</el-button>
+            </div>
+          </template>
+        </el-table>
+      </div>
 
       <div class="zk-pager">
         <el-pagination
@@ -108,6 +150,7 @@
           :current-page="pageNum"
           :page-size="pageSize"
           :page-sizes="[10, 20, 50]"
+          aria-label="会话分页"
           @current-change="changePage"
           @size-change="changeSize"
         />
@@ -115,7 +158,7 @@
     </div>
 
     <div class="page-tip">
-      <i />
+      <i aria-hidden="true" />
       数据来源 GET /api/demo/sessions · 支持 status 筛选 · 演示数据，后续里程碑完善
     </div>
 
@@ -146,12 +189,20 @@
           <div class="detail-item">
             <span class="detail-label">满意度评分</span>
             <span class="detail-value">
-              <span v-if="Number(activeSession.rating) > 0" class="stars">
-                <span
-                  v-for="n in 5"
-                  :key="n"
-                  :class="{ 'empty-star': n > Number(activeSession.rating) }"
-                >★</span>
+              <span
+                v-if="Number(activeSession.rating) > 0"
+                class="rating-cell"
+                role="img"
+                :aria-label="`满意度评分 ${activeSession.rating} 分，满分 5 分`"
+              >
+                <span class="stars" aria-hidden="true">
+                  <span
+                    v-for="n in 5"
+                    :key="n"
+                    :class="{ 'empty-star': n > Number(activeSession.rating) }"
+                  >★</span>
+                </span>
+                <span class="rating-num zk-num" aria-hidden="true">{{ activeSession.rating }}</span>
               </span>
               <span v-else class="zk-muted">未评价</span>
             </span>
@@ -167,10 +218,12 @@
               class="timeline-item"
               :class="{ done: step.time, pending: !step.time }"
             >
-              <span class="timeline-dot" />
+              <span class="timeline-dot" aria-hidden="true" />
               <div class="timeline-body">
                 <div class="timeline-label">{{ step.label }}</div>
-                <div class="timeline-time">{{ step.time ? formatDateTime(step.time) : '未发生' }}</div>
+                <div class="timeline-time">
+                  {{ step.time ? formatDateTime(step.time) : '未发生' }}
+                </div>
               </div>
             </div>
           </div>
@@ -205,6 +258,7 @@ const {
   error,
   load,
   search,
+  reset,
   changePage,
   changeSize
 } = usePagedList(getSessions, { status: '' })
@@ -222,6 +276,10 @@ const timeline = computed(() => {
   ]
 })
 
+function rowClassName() {
+  return 'is-clickable-row'
+}
+
 function openDetail(row) {
   activeSession.value = row
   detailVisible.value = true
@@ -234,18 +292,40 @@ onMounted(load)
 .order-no {
   font-family: 'JetBrains Mono', Consolas, monospace;
   font-size: 11.5px;
-  color: #475569;
+  color: var(--zk-text-2);
+  font-variant-numeric: tabular-nums;
 }
 
 .person {
   font-size: 12.5px;
-  color: #1f2b3d;
+  color: var(--zk-text);
 }
 
 .msg-count {
   font-size: 12.5px;
   font-weight: 600;
-  color: #475569;
+  color: var(--zk-text-2);
+}
+
+/* 评分：星星 + 数字，右侧对齐 */
+.rating-cell {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.rating-num {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--zk-amber);
+}
+
+.view-btn {
+  min-height: 32px;
+  padding: 0 8px;
+  font-size: 12.5px;
+  font-weight: 600;
 }
 
 .cell-time {
@@ -254,8 +334,26 @@ onMounted(load)
   font-variant-numeric: tabular-nums;
 }
 
-.session-table :deep(.el-table__row) {
-  cursor: pointer;
+/* 表格横向滚动：窄屏滚动而不是挤压列宽 */
+.table-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border-radius: 0 0 var(--zk-radius-lg) var(--zk-radius-lg);
+  outline-offset: -2px;
+}
+
+.table-scroll:focus-visible {
+  outline: 2px solid var(--zk-teal-dark);
+  outline-offset: -2px;
+}
+
+.table-scroll :deep(.el-table) {
+  min-width: 1110px;
+}
+
+.table-scroll :deep(.el-table__body tr:hover > td.el-table__cell) {
+  background-color: var(--zk-surface-2);
+  transition: background-color var(--zk-dur-fast) var(--zk-ease-out);
 }
 
 /* 抽屉 */
@@ -335,7 +433,7 @@ onMounted(load)
   top: 14px;
   bottom: 0;
   width: 1px;
-  background: #e2e8f0;
+  background: var(--zk-border);
 }
 
 .timeline-dot {
@@ -344,20 +442,20 @@ onMounted(load)
   flex: 0 0 11px;
   border-radius: 50%;
   margin-top: 3px;
-  border: 2px solid #cbd5e1;
-  background: #ffffff;
+  border: 2px solid var(--zk-border-strong);
+  background: var(--zk-surface);
 }
 
 .timeline-item.done .timeline-dot {
-  border-color: #14b8a6;
-  background: #14b8a6;
+  border-color: var(--zk-teal);
+  background: var(--zk-teal);
   box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.14);
 }
 
 .timeline-label {
   font-size: 12.5px;
   font-weight: 600;
-  color: #1f2b3d;
+  color: var(--zk-text);
 }
 
 .timeline-item.pending .timeline-label {

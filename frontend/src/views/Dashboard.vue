@@ -7,10 +7,10 @@
       badge="演示数据"
     >
       <template #actions>
-        <div class="health-chip" :class="healthTone">
-          <i class="dot" />
+        <div class="health-chip" :class="healthTone" role="status" :title="`MySQL ${health.mysql} · Redis ${health.redis}`">
+          <i class="dot" aria-hidden="true" />
           <span class="health-item">MySQL {{ health.mysql }}</span>
-          <span class="health-sep">·</span>
+          <span class="health-sep" aria-hidden="true">·</span>
           <span class="health-item">Redis {{ health.redis }}</span>
         </div>
         <el-button :icon="Refresh" :loading="loading" @click="loadAll">刷新</el-button>
@@ -81,7 +81,7 @@
             </span>
           </div>
           <div class="trend-main">
-            <div class="trend-plot">
+            <div class="trend-plot" role="img" :aria-label="trendSummary">
               <span v-for="n in 5" :key="n" class="grid-line" :style="{ top: `${((n - 1) / 4) * 100}%` }" />
               <div class="trend-cols">
                 <div v-for="(day, index) in trend" :key="day.date || index" class="trend-col">
@@ -183,7 +183,7 @@
       <div class="zk-card">
         <div class="zk-card-head">
           <div class="zk-card-title">最近工单</div>
-          <router-link class="more-link" to="/orders">查看全部 →</router-link>
+          <router-link class="more-link" to="/orders" aria-label="查看全部工单">查看全部 →</router-link>
         </div>
         <el-table
           :data="recentOrders"
@@ -192,12 +192,12 @@
           :show-header="true"
           empty-text="暂无工单数据"
         >
-          <el-table-column prop="orderNo" label="工单号" width="128">
+          <el-table-column prop="orderNo" label="工单号" width="148">
             <template #default="{ row }">
-              <span class="order-no">{{ row.orderNo }}</span>
+              <span class="order-no" :title="row.orderNo">{{ row.orderNo }}</span>
             </template>
           </el-table-column>
-          <el-table-column prop="title" label="标题" min-width="130" show-overflow-tooltip />
+          <el-table-column prop="title" label="标题" min-width="120" show-overflow-tooltip />
           <el-table-column prop="priority" label="优先级" width="96">
             <template #default="{ row }">
               <StatusPill
@@ -225,12 +225,12 @@
       <div class="zk-card">
         <div class="zk-card-head">
           <div class="zk-card-title">最近会话</div>
-          <router-link class="more-link" to="/sessions">查看全部 →</router-link>
+          <router-link class="more-link" to="/sessions" aria-label="查看全部会话">查看全部 →</router-link>
         </div>
         <el-table :data="recentSessions" class="dash-table" empty-text="暂无会话数据">
-          <el-table-column prop="sessionNo" label="会话号" width="118">
+          <el-table-column prop="sessionNo" label="会话号" width="136">
             <template #default="{ row }">
-              <span class="order-no">{{ row.sessionNo }}</span>
+              <span class="order-no" :title="row.sessionNo">{{ row.sessionNo }}</span>
             </template>
           </el-table-column>
           <el-table-column prop="userName" label="用户" width="76" show-overflow-tooltip />
@@ -375,6 +375,11 @@ const trendTotals = computed(() => {
   const sessions = trend.value.reduce((sum, item) => sum + (Number(item.sessions) || 0), 0)
   const orders = trend.value.reduce((sum, item) => sum + (Number(item.orders) || 0), 0)
   return { sessions, orders }
+})
+
+const trendSummary = computed(() => {
+  if (!trend.value.length) return '暂无近 7 日趋势数据'
+  return `近 7 日趋势：会话合计 ${trendTotals.value.sessions} 个，工单合计 ${trendTotals.value.orders} 个。`
 })
 
 function niceStep(raw) {
@@ -1010,14 +1015,26 @@ onMounted(loadAll)
 
 /* ---------- 表格 ---------- */
 .more-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 0 4px;
   font-size: 12px;
   color: var(--zk-indigo);
-  font-weight: 500;
-  transition: opacity 0.15s ease;
+  font-weight: 550;
+  border-radius: 6px;
+  transition: color var(--zk-dur-fast) var(--zk-ease-out),
+    background-color var(--zk-dur-fast) var(--zk-ease-out);
 }
 
 .more-link:hover {
-  opacity: 0.75;
+  color: var(--zk-indigo-dark);
+  background: var(--zk-indigo-soft);
+}
+
+.more-link:focus-visible {
+  outline: 2px solid var(--zk-teal-dark);
+  outline-offset: 2px;
 }
 
 .dash-table {
@@ -1025,9 +1042,15 @@ onMounted(loadAll)
 }
 
 .order-no {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
   font-family: 'JetBrains Mono', Consolas, monospace;
   font-size: 11.5px;
-  color: #475569;
+  color: var(--zk-text-2);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
 }
 
 .cell-time {
@@ -1093,6 +1116,76 @@ onMounted(loadAll)
 @media (max-width: 640px) {
   .stat-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .stat-card {
+    padding: 14px 14px 12px;
+  }
+
+  .stat-value {
+    margin-top: 10px;
+    font-size: 24px;
+  }
+
+  .stat-caption {
+    white-space: normal;
+    line-height: 1.45;
+  }
+
+  .trend-body {
+    padding: 4px 12px 0;
+    gap: 4px;
+  }
+
+  .trend-card .zk-card-head {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .trend-side {
+    width: 100%;
+    justify-content: space-between;
+    gap: 10px;
+  }
+
+  .trend-totals {
+    font-size: 11px;
+  }
+
+  .trend-axis {
+    width: 22px;
+    flex-basis: 22px;
+    height: 150px;
+  }
+
+  .trend-plot {
+    height: 150px;
+  }
+
+  .trend-side {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .bar {
+    width: 10px;
+  }
+
+  .dash-footnote {
+    align-items: flex-start;
+    line-height: 1.6;
+  }
+}
+
+@media (max-width: 360px) {
+  .stat-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .trend-foot {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 </style>

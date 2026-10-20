@@ -154,6 +154,7 @@ smart-customer-service/
 - [x] Swagger 在线接口文档
 - [x] 前端演示端：登录、看板（真实种子数据）、知识库、工单、会话、坐席、用户、AI 聊天
 - [x] 只读演示接口 `/api/demo/*`（看板/列表数据，后续由正式接口替换）
+- [x] UI/UX v2：统一设计令牌、键盘焦点、移动端抽屉、触控尺寸、空态/加载态、reduced-motion、表格与图表可读性
 
 ## 6. 后续里程碑
 
@@ -181,13 +182,22 @@ smart-customer-service/
 
 ---
 
-## 8. 界面预览
+## 8. 界面预览（UI/UX v2）
 
 | 登录页 | 数据看板 |
 |--------|----------|
-| ![登录页](docs/screenshots/01-login.png) | ![数据看板](docs/screenshots/02-dashboard.png) |
+| ![登录页](docs/screenshots/08-login-v2.png) | ![数据看板](docs/screenshots/04-dashboard-v2.png) |
 
-![AI 聊天](docs/screenshots/03-chat.png)
+| 知识库 | AI 聊天 |
+|--------|---------|
+| ![知识库](docs/screenshots/05-knowledge-v2.png) | ![AI 聊天](docs/screenshots/06-chat-v2.png) |
+
+移动端（390×844，2 列指标卡 + 抽屉导航）：
+
+![移动端看板](docs/screenshots/07-mobile-dashboard.png)
+
+> 本轮按 UI/UX Pro Max 规则完成对比度、焦点态、移动端抽屉、触控尺寸、空态/加载态、
+> reduced-motion、图表可读性等优化，详见 [docs/UI优化说明.md](docs/UI优化说明.md)。
 
 ---
 
@@ -196,3 +206,4 @@ smart-customer-service/
 - [项目开发文档.md](项目开发文档.md) —— 总纲：需求、架构、规范、页面、里程碑、验收
 - [docs/数据库设计.md](docs/数据库设计.md) —— 数据库设计明细
 - [docs/接口与WebSocket协议.md](docs/接口与WebSocket协议.md) —— 接口与实时通信协议
+- [docs/UI优化说明.md](docs/UI优化说明.md) —— UI/UX v2 优化记录、设计令牌与验证清单

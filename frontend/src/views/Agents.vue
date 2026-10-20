@@ -12,7 +12,7 @@
     </PageHeader>
 
     <!-- 概览 -->
-    <div class="agent-summary">
+    <div class="agent-summary" role="group" aria-label="坐席状态概览">
       <div class="summary-item">
         <span class="summary-label">在线坐席</span>
         <span class="summary-value zk-num">{{ statusCount.ONLINE }}</span>
@@ -35,10 +35,15 @@
     </div>
 
     <!-- 坐席卡片 -->
-    <section class="agent-grid">
-      <article v-for="agent in agents" :key="agent.agentId" class="agent-tile">
+    <section
+      class="agent-grid"
+      role="list"
+      aria-label="坐席状态列表"
+      :aria-busy="loading ? 'true' : 'false'"
+    >
+      <article v-for="agent in agents" :key="agent.agentId" class="agent-tile" role="listitem">
         <div class="tile-head">
-          <div class="tile-avatar" :class="statusTone(agent.onlineStatus)">
+          <div class="tile-avatar" :class="statusTone(agent.onlineStatus)" aria-hidden="true">
             {{ (agent.nickname || '坐').slice(0, 1) }}
           </div>
           <div class="tile-id">
@@ -59,11 +64,19 @@
               {{ agent.currentCount ?? 0 }}<span class="load-max">/{{ agent.maxConcurrent ?? 0 }}</span>
             </span>
           </div>
-          <div class="tile-track">
+          <div
+            class="tile-track"
+            role="progressbar"
+            :aria-valuenow="Number(agent.currentCount) || 0"
+            aria-valuemin="0"
+            :aria-valuemax="Math.max(Number(agent.maxConcurrent) || 0, 1)"
+            :aria-label="`${agent.nickname || '坐席'} 并发负载`"
+          >
             <span
               class="tile-fill"
               :class="loadTone(agent.currentCount, agent.maxConcurrent)"
               :style="{ width: `${percent(agent.currentCount, agent.maxConcurrent)}%` }"
+              aria-hidden="true"
             />
           </div>
           <div class="load-foot">
@@ -73,17 +86,25 @@
         </div>
 
         <div class="tile-foot">
-          <span class="heartbeat-dot" :class="agent.onlineStatus === 'OFFLINE' ? 'off' : 'on'" />
+          <span
+            class="heartbeat-dot"
+            :class="agent.onlineStatus === 'OFFLINE' ? 'off' : 'on'"
+            aria-hidden="true"
+          />
           最近心跳 {{ formatDateTime(agent.lastHeartbeat) }}
         </div>
       </article>
 
       <div v-if="!agents.length" class="agent-empty zk-card">
         <div class="table-empty">
-          <div class="empty-icon"><el-icon><Headset /></el-icon></div>
+          <div class="empty-icon" aria-hidden="true">
+            <el-icon><Headset /></el-icon>
+          </div>
           <p>{{ agentsError || '暂无坐席数据' }}</p>
-          <span v-if="!agentsError" class="empty-hint">等待 /api/demo/agents 返回在线坐席</span>
-          <el-button v-else size="small" @click="reload">重新加载</el-button>
+          <span v-if="agentsError" class="empty-hint">请确认后端 /api/demo/agents 已就绪</span>
+          <span v-else class="empty-hint">还没有坐席在线，或坐席数据尚未导入</span>
+          <el-button v-if="agentsError" @click="loadAgents">重新加载</el-button>
+          <el-button v-else @click="loadAgents">刷新列表</el-button>
         </div>
       </div>
     </section>
@@ -92,62 +113,79 @@
     <div class="zk-card queue-card">
       <div class="zk-card-head">
         <div>
-          <div class="zk-card-title">等待接入队列</div>
+          <div id="queue-title" class="zk-card-title">等待接入队列</div>
           <div class="zk-card-desc">按进入排队时间先后排序，waitSeconds 每秒递增</div>
         </div>
         <div class="queue-head-right">
-          <span class="queue-live"><i />实时</span>
-          <span class="queue-count">{{ waiting.length }} 人等待</span>
+          <span class="queue-live"><i aria-hidden="true" />实时</span>
+          <span class="queue-count zk-num" aria-live="polite">{{ waiting.length }} 人等待</span>
         </div>
       </div>
 
-      <el-table v-loading="queueLoading" :data="waiting" empty-text="当前没有等待接入的用户">
-        <el-table-column label="会话号" width="150">
-          <template #default="{ row }">
-            <span class="order-no">{{ row.sessionNo }}</span>
-          </template>
-        </el-table-column>
-        <el-table-column label="用户" width="130">
-          <template #default="{ row }">
-            <span class="person">{{ row.userName || '—' }}</span>
-          </template>
-        </el-table-column>
-        <el-table-column label="排队进入时间" width="190">
-          <template #default="{ row }">
-            <span class="cell-time">{{ formatDateTime(row.queueEnterTime) }}</span>
-          </template>
-        </el-table-column>
-        <el-table-column label="已等待" width="160">
-          <template #default="{ row }">
-            <span class="wait-badge" :class="waitLevel(row)">
-              <el-icon><Timer /></el-icon>
-              {{ formatWait(liveWait(row)) }}
-            </span>
-          </template>
-        </el-table-column>
-        <el-table-column label="操作" min-width="140">
-          <template #default>
-            <el-tooltip content="接入会话功能将在 M4 里程碑开放" placement="top">
-              <span class="btn-wrap">
-                <el-button size="small" type="primary" plain disabled>接入会话</el-button>
+      <div
+        class="table-scroll"
+        role="region"
+        aria-label="等待接入队列"
+        tabindex="0"
+        :aria-busy="queueLoading ? 'true' : 'false'"
+      >
+        <el-table
+          v-loading="queueLoading"
+          :data="waiting"
+          aria-label="坐席等待接入队列"
+          empty-text="当前没有等待接入的用户"
+        >
+          <el-table-column label="会话号" width="150">
+            <template #default="{ row }">
+              <span class="order-no">{{ row.sessionNo }}</span>
+            </template>
+          </el-table-column>
+          <el-table-column label="用户" width="130">
+            <template #default="{ row }">
+              <span class="person">{{ row.userName || '—' }}</span>
+            </template>
+          </el-table-column>
+          <el-table-column label="排队进入时间" width="190">
+            <template #default="{ row }">
+              <span class="cell-time">{{ formatDateTime(row.queueEnterTime) }}</span>
+            </template>
+          </el-table-column>
+          <el-table-column label="已等待" width="160">
+            <template #default="{ row }">
+              <span class="wait-badge zk-num" :class="waitLevel(row)">
+                <el-icon aria-hidden="true"><Timer /></el-icon>
+                {{ formatWait(liveWait(row)) }}
               </span>
-            </el-tooltip>
-          </template>
-        </el-table-column>
+            </template>
+          </el-table-column>
+          <el-table-column label="操作" min-width="140">
+            <template #default>
+              <el-tooltip content="接入会话功能将在 M4 里程碑开放" placement="top">
+                <span class="btn-wrap">
+                  <el-button type="primary" plain disabled>接入会话</el-button>
+                </span>
+              </el-tooltip>
+            </template>
+          </el-table-column>
 
-        <template #empty>
-          <div class="table-empty">
-            <div class="empty-icon"><el-icon><Timer /></el-icon></div>
-            <p>{{ queueError || '当前没有等待接入的用户' }}</p>
-            <span v-if="!queueError" class="empty-hint">AI 无法解决时会自动进入该队列</span>
-            <el-button v-else size="small" @click="loadWaiting()">重新加载</el-button>
-          </div>
-        </template>
-      </el-table>
+          <template #empty>
+            <div class="table-empty">
+              <div class="empty-icon" aria-hidden="true">
+                <el-icon><Timer /></el-icon>
+              </div>
+              <p>{{ queueError || '当前没有等待接入的用户' }}</p>
+              <span v-if="queueError" class="empty-hint">请确认后端 /api/demo/waiting 已就绪</span>
+              <span v-else class="empty-hint">AI 无法解决时会自动进入该队列</span>
+              <el-button v-if="queueError" @click="loadWaiting()">重新加载</el-button>
+              <el-button v-else @click="loadWaiting()">刷新队列</el-button>
+            </div>
+          </template>
+        </el-table>
+      </div>
     </div>
 
     <div class="page-tip">
-      <i />
+      <i aria-hidden="true" />
       数据来源 GET /api/demo/agents、GET /api/demo/waiting · 接入/挂起等写操作后续里程碑完善
     </div>
   </div>
@@ -329,12 +367,15 @@ onBeforeUnmount(() => {
   display: flex;
   flex-direction: column;
   gap: 16px;
-  transition: transform 0.18s ease, box-shadow 0.18s ease;
+  transition: transform var(--zk-dur-base) var(--zk-ease-out),
+    box-shadow var(--zk-dur-base) var(--zk-ease-out),
+    border-color var(--zk-dur-base) var(--zk-ease-out);
 }
 
 .agent-tile:hover {
   transform: translateY(-2px);
   box-shadow: var(--zk-shadow-md);
+  border-color: var(--zk-border-strong);
 }
 
 .tile-head {
@@ -356,19 +397,21 @@ onBeforeUnmount(() => {
 }
 
 .tile-avatar.teal {
-  color: #0f766e;
-  background: #e6fbf7;
-  border-color: #bff0e7;
+  color: var(--zk-teal-deep);
+  background: var(--zk-teal-soft);
+  border-color: var(--zk-teal-line);
 }
+
 .tile-avatar.amber {
-  color: #b45309;
-  background: #fff7e6;
-  border-color: #fde3b4;
+  color: var(--zk-amber);
+  background: var(--zk-amber-soft);
+  border-color: var(--zk-amber-line);
 }
+
 .tile-avatar.slate {
-  color: #64748b;
-  background: #f1f5fa;
-  border-color: #e2e8f0;
+  color: var(--zk-text-2);
+  background: var(--zk-surface-2);
+  border-color: var(--zk-border);
 }
 
 .tile-id {
@@ -393,8 +436,8 @@ onBeforeUnmount(() => {
 }
 
 .load-block {
-  background: #fbfcfe;
-  border: 1px solid #eef1f7;
+  background: var(--zk-surface-2);
+  border: 1px solid var(--zk-border);
   border-radius: 12px;
   padding: 12px 14px;
 }
@@ -426,7 +469,7 @@ onBeforeUnmount(() => {
   margin-top: 9px;
   height: 6px;
   border-radius: 999px;
-  background: #eef1f7;
+  background: var(--zk-border);
   overflow: hidden;
 }
 
@@ -434,23 +477,26 @@ onBeforeUnmount(() => {
   display: block;
   height: 100%;
   border-radius: 999px;
-  transition: width 0.5s ease;
+  transition: width var(--zk-dur-slow) var(--zk-ease-out);
 }
 
 .tile-fill.calm {
-  background: linear-gradient(90deg, #2dd4bf, #14b8a6);
+  background: linear-gradient(90deg, #2dd4bf, var(--zk-teal));
 }
+
 .tile-fill.warm {
-  background: linear-gradient(90deg, #fbbf24, #f59e0b);
+  background: linear-gradient(90deg, #fbbf24, var(--zk-amber));
 }
+
 .tile-fill.hot {
-  background: linear-gradient(90deg, #fb7185, #e11d48);
+  background: linear-gradient(90deg, #fb7185, var(--zk-red));
 }
 
 .load-foot {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 8px;
   margin-top: 8px;
   font-size: 11px;
   color: var(--zk-text-2);
@@ -474,16 +520,16 @@ onBeforeUnmount(() => {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: #94a3b8;
+  background: var(--zk-text-3);
 }
 
 .heartbeat-dot.on {
-  background: #14b8a6;
+  background: var(--zk-teal);
   box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.14);
 }
 
 .heartbeat-dot.off {
-  background: #cbd5e1;
+  background: var(--zk-border-strong);
 }
 
 .agent-empty {
@@ -499,26 +545,29 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   gap: 12px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 .queue-live {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  font-size: 11px;
-  color: #0f766e;
-  background: #e6fbf7;
-  border: 1px solid #bff0e7;
-  border-radius: 999px;
+  min-height: 26px;
   padding: 3px 9px;
+  font-size: 11px;
   font-weight: 600;
+  color: var(--zk-teal-deep);
+  background: var(--zk-teal-soft);
+  border: 1px solid var(--zk-teal-line);
+  border-radius: 999px;
 }
 
 .queue-live i {
   width: 5px;
   height: 5px;
   border-radius: 50%;
-  background: #14b8a6;
+  background: var(--zk-teal);
   animation: blink 1.6s ease-in-out infinite;
 }
 
@@ -535,13 +584,13 @@ onBeforeUnmount(() => {
 .queue-count {
   font-size: 12px;
   color: var(--zk-text-2);
-  font-variant-numeric: tabular-nums;
 }
 
 .order-no {
   font-family: 'JetBrains Mono', Consolas, monospace;
   font-size: 11.5px;
-  color: #475569;
+  color: var(--zk-text-2);
+  font-variant-numeric: tabular-nums;
 }
 
 .person {
@@ -559,45 +608,104 @@ onBeforeUnmount(() => {
   display: inline-flex;
   align-items: center;
   gap: 5px;
+  padding: 3px 9px;
   font-size: 12px;
   font-weight: 600;
-  padding: 3px 9px;
   border-radius: 999px;
-  font-variant-numeric: tabular-nums;
   border: 1px solid;
 }
 
 .wait-badge.normal {
-  color: #0f766e;
-  background: #e6fbf7;
-  border-color: #bff0e7;
+  color: var(--zk-teal-deep);
+  background: var(--zk-teal-soft);
+  border-color: var(--zk-teal-line);
 }
 
 .wait-badge.warn {
-  color: #b45309;
-  background: #fff7e6;
-  border-color: #fde3b4;
+  color: var(--zk-amber);
+  background: var(--zk-amber-soft);
+  border-color: var(--zk-amber-line);
 }
 
 .wait-badge.danger {
-  color: #be123c;
-  background: #fff0f3;
-  border-color: #fbd0da;
+  color: var(--zk-red);
+  background: var(--zk-red-soft);
+  border-color: var(--zk-red-line);
 }
 
 .btn-wrap {
   display: inline-block;
 }
 
+/* 表格横向滚动：窄屏滚动而不是挤压列宽 */
+.table-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border-radius: 0 0 var(--zk-radius-lg) var(--zk-radius-lg);
+  outline-offset: -2px;
+}
+
+.table-scroll:focus-visible {
+  outline: 2px solid var(--zk-teal-dark);
+  outline-offset: -2px;
+}
+
+.table-scroll :deep(.el-table) {
+  min-width: 770px;
+}
+
+.table-scroll :deep(.el-table__body tr:hover > td.el-table__cell) {
+  background-color: var(--zk-surface-2);
+  transition: background-color var(--zk-dur-fast) var(--zk-ease-out);
+}
+
+/* 响应式：任务要求 ≤640px 坐席卡片单列 */
 @media (max-width: 1180px) {
   .agent-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
-@media (max-width: 760px) {
+@media (max-width: 768px) {
+  .agent-summary {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px 16px;
+    padding: 14px 16px;
+  }
+
+  .summary-item {
+    padding-right: 0;
+    border-right: none;
+  }
+
+  .summary-desc {
+    grid-column: 1 / -1;
+    min-width: 0;
+  }
+
+  .queue-card .zk-card-head {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .queue-head-right {
+    width: 100%;
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 640px) {
   .agent-grid {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .agent-tile {
+    padding: 16px;
+  }
+
+  .agent-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 </style>
