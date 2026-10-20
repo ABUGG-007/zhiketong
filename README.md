@@ -194,7 +194,9 @@ smart-customer-service/
 
 移动端（390×844，2 列指标卡 + 抽屉导航）：
 
-![移动端看板](docs/screenshots/07-mobile-dashboard.png)
+| 看板 | 抽屉导航 |
+|------|----------|
+| ![移动端看板](docs/screenshots/07-mobile-dashboard.png) | ![移动端导航](docs/screenshots/09-mobile-nav.png) |
 
 > 本轮按 UI/UX Pro Max 规则完成对比度、焦点态、移动端抽屉、触控尺寸、空态/加载态、
 > reduced-motion、图表可读性等优化，详见 [docs/UI优化说明.md](docs/UI优化说明.md)。

@@ -84,7 +84,7 @@
 | 构建（`node scripts/build.mjs`） | ✅ 成功，产物 `frontend/dist` |
 | 浏览器控制台 / 页面错误 | ✅ 各页面 0 条（登录、看板、知识库、聊天截图采集时验证） |
 | 1440×900 视觉 | ✅ `docs/screenshots/04-dashboard-v2.png`、`05-knowledge-v2.png`、`06-chat-v2.png`、`08-login-v2.png` |
-| 390×844 移动端 | ✅ `docs/screenshots/07-mobile-dashboard.png`（2 列指标卡、抽屉导航） |
+| 390×844 移动端 | ✅ `docs/screenshots/07-mobile-dashboard.png`（2 列指标卡）、`docs/screenshots/09-mobile-nav.png`（抽屉导航） |
 | 键盘焦点 | ✅ 全局 2px 品牌焦点环；表格「查看」、分页、侧栏、按钮可达 |
 | reduced-motion | ✅ 全局过渡/动画关闭或降级 |
 | 颜色对比 | ✅ 正文/次级文字全部使用达标 token；状态色带文字 |
