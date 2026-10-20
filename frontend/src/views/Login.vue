@@ -41,23 +41,6 @@
           </li>
         </ul>
 
-        <!-- 产品能力示意（静态文案，不参与登录流程） -->
-        <div class="chat-preview" aria-hidden="true">
-          <div class="chat-line chat-line--user">
-            <span class="chat-bubble">忘记密码按什么步骤找回？</span>
-          </div>
-          <div class="chat-line chat-line--ai">
-            <span class="ai-avatar">AI</span>
-            <div class="chat-bubble chat-bubble--ai">
-              可在登录页点击「忘记密码」，用绑定手机号接收验证码后重置，验证码 5 分钟内有效。
-              <div class="chat-meta">
-                <span class="hit-chip">命中知识库 · 相似度 0.86</span>
-                <span class="chat-time">用时 0.8s</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
         <div class="hero-footer">
           <span>Spring Boot 2.7</span>
           <span class="dot-sep" />
