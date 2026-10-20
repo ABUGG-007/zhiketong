@@ -41,7 +41,7 @@
           </li>
         </ul>
 
-        <!-- 演示用对话示意 -->
+        <!-- 产品能力示意（静态文案，不参与登录流程） -->
         <div class="chat-preview" aria-hidden="true">
           <div class="chat-line chat-line--user">
             <span class="chat-bubble">忘记密码按什么步骤找回？</span>
@@ -79,7 +79,7 @@
         <div class="panel-head">
           <div class="zk-eyebrow">WELCOME BACK</div>
           <h2>登录智客通工作台</h2>
-          <p>使用演示账号进入，所有演示账号密码统一为 <b>123456</b></p>
+          <p>使用初始化账号进入，首次登录后请立即修改密码</p>
         </div>
 
         <el-form
@@ -132,26 +132,6 @@
           </el-button>
         </el-form>
 
-        <div class="demo-block">
-          <div class="demo-head">
-            <span>演示账号</span>
-            <span class="demo-hint">点击快速填充</span>
-          </div>
-          <div class="demo-chips">
-            <button
-              v-for="account in demoAccounts"
-              :key="account.username"
-              type="button"
-              class="demo-chip"
-              :aria-label="`使用演示账号 ${account.username}（${account.roleLabel}）`"
-              @click="fillAccount(account)"
-            >
-              <span class="chip-role" :class="account.tone">{{ account.roleLabel }}</span>
-              <span class="chip-user">{{ account.username }}</span>
-            </button>
-          </div>
-        </div>
-
         <div class="panel-foot" role="status" aria-live="polite">
           <span class="foot-dot" :class="healthTone" aria-hidden="true" />
           <span>{{ healthText }}</span>
@@ -186,8 +166,8 @@ const loading = ref(false)
 const errorMessage = ref('')
 
 const form = reactive({
-  username: 'admin',
-  password: '123456'
+  username: '',
+  password: ''
 })
 
 const rules = {
@@ -219,12 +199,6 @@ const capabilities = [
   }
 ]
 
-const demoAccounts = [
-  { username: 'admin', roleLabel: '管理员', tone: 'red' },
-  { username: 'agent01', roleLabel: '坐席', tone: 'indigo' },
-  { username: 'user01', roleLabel: '用户', tone: 'slate' }
-]
-
 const apiHint = computed(() => {
   const env = import.meta.env.VITE_API_BASE
   return env || '/api（经由 Vite 代理 → localhost:8080）'
@@ -244,13 +218,6 @@ const healthText = computed(() => {
   if (health.value.status === 'DEGRADED') return '依赖服务降级'
   return '后端服务未连接（请确认 8080 已启动）'
 })
-
-function fillAccount(account) {
-  form.username = account.username
-  form.password = '123456'
-  errorMessage.value = ''
-  ElMessage.success(`已填充演示账号 ${account.username}`)
-}
 
 async function onSubmit() {
   if (loading.value) return

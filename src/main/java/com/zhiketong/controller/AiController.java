@@ -16,7 +16,7 @@ import javax.validation.Valid;
 import java.util.Collections;
 
 /**
- * AI 对话调试接口（正式用户对话走 WebSocket，此接口用于联调与演示大模型接入）。
+ * AI 对话调试接口（正式用户对话走 WebSocket，此接口用于联调大模型接入）。
  */
 @Tag(name = "02. AI 对话")
 @RestController

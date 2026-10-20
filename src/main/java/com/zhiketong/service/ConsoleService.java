@@ -19,16 +19,16 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 演示只读查询服务。
+ * 控制台只读查询服务。
  *
- * <p>用于前端演示页（登录后查看种子数据）；正式业务接口按 M1～M6 里程碑逐步替换。
- * 只读、只查，不做任何写操作，不返回密码字段。</p>
+ * <p>看板与列表页的只读过渡接口，直接查询本系统 MySQL 业务表；
+ * 不构造、不返回任何模拟数据。正式模块接口按 M1～M6 里程碑逐步替换。</p>
  */
 @Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
-public class DemoService {
+public class ConsoleService {
 
     private final JdbcTemplate jdbcTemplate;
 

@@ -2,7 +2,7 @@ package com.zhiketong.controller;
 
 import com.zhiketong.common.PageResult;
 import com.zhiketong.common.Result;
-import com.zhiketong.service.DemoService;
+import com.zhiketong.service.ConsoleService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -15,23 +15,23 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 前端演示只读接口。
+ * 控制台只读过渡接口。
  *
- * <p>供前端演示页展示真实种子数据；正式业务接口按里程碑逐步替换。
+ * <p>直接查询本系统数据库，不返回任何模拟数据；正式模块接口按里程碑逐步替换。
  * 所有接口要求登录（JWT），只读、不返回密码。</p>
  */
-@Tag(name = "03. 演示数据（只读）")
+@Tag(name = "03. 控制台只读数据（过渡）")
 @RestController
-@RequestMapping("/api/demo")
+@RequestMapping("/api/console")
 @RequiredArgsConstructor
-public class DemoController {
+public class ConsoleController {
 
-    private final DemoService demoService;
+    private final ConsoleService consoleService;
 
     @Operation(summary = "看板概览")
     @GetMapping("/overview")
     public Result<Map<String, Object>> overview() {
-        return Result.success(demoService.overview());
+        return Result.success(consoleService.overview());
     }
 
     @Operation(summary = "知识库条目分页")
@@ -41,14 +41,14 @@ public class DemoController {
             @RequestParam(required = false) Long categoryId,
             @RequestParam(defaultValue = "1") int pageNum,
             @RequestParam(defaultValue = "10") int pageSize) {
-        return Result.success(demoService.kbEntries(keyword, categoryId,
+        return Result.success(consoleService.kbEntries(keyword, categoryId,
                 normalizePageNum(pageNum), normalizePageSize(pageSize)));
     }
 
     @Operation(summary = "知识库分类")
     @GetMapping("/categories")
     public Result<List<Map<String, Object>>> categories() {
-        return Result.success(demoService.categories());
+        return Result.success(consoleService.categories());
     }
 
     @Operation(summary = "工单分页")
@@ -59,7 +59,7 @@ public class DemoController {
             @RequestParam(defaultValue = "") String keyword,
             @RequestParam(defaultValue = "1") int pageNum,
             @RequestParam(defaultValue = "10") int pageSize) {
-        return Result.success(demoService.workOrders(status, priority, keyword,
+        return Result.success(consoleService.workOrders(status, priority, keyword,
                 normalizePageNum(pageNum), normalizePageSize(pageSize)));
     }
 
@@ -69,7 +69,7 @@ public class DemoController {
             @RequestParam(defaultValue = "") String status,
             @RequestParam(defaultValue = "1") int pageNum,
             @RequestParam(defaultValue = "10") int pageSize) {
-        return Result.success(demoService.sessions(status,
+        return Result.success(consoleService.sessions(status,
                 normalizePageNum(pageNum), normalizePageSize(pageSize)));
     }
 
@@ -79,20 +79,20 @@ public class DemoController {
             @RequestParam(defaultValue = "") String roleCode,
             @RequestParam(defaultValue = "1") int pageNum,
             @RequestParam(defaultValue = "10") int pageSize) {
-        return Result.success(demoService.users(roleCode,
+        return Result.success(consoleService.users(roleCode,
                 normalizePageNum(pageNum), normalizePageSize(pageSize)));
     }
 
     @Operation(summary = "坐席状态")
     @GetMapping("/agents")
     public Result<List<Map<String, Object>>> agents() {
-        return Result.success(demoService.agents());
+        return Result.success(consoleService.agents());
     }
 
     @Operation(summary = "等待接入队列")
     @GetMapping("/waiting")
     public Result<List<Map<String, Object>>> waiting() {
-        return Result.success(demoService.waitingSessions());
+        return Result.success(consoleService.waitingSessions());
     }
 
     private int normalizePageNum(int pageNum) {

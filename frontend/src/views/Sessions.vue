@@ -4,7 +4,6 @@
       eyebrow="SESSIONS"
       title="会话管理"
       description="查看 AI 接待、人工排队、人工中与已结束的会话。可点击行或使用「查看」按钮打开会话生命周期时间线。"
-      badge="演示数据"
     >
       <template #actions>
         <el-button :icon="Refresh" :loading="loading" @click="load">刷新</el-button>
@@ -131,9 +130,9 @@
                 <el-icon><ChatLineSquare /></el-icon>
               </div>
               <p>{{ error || '暂无匹配的会话' }}</p>
-              <span v-if="error" class="empty-hint">请确认后端 /api/demo/sessions 已就绪</span>
+              <span v-if="error" class="empty-hint">请确认后端 /api/console/sessions 已就绪</span>
               <span v-else-if="filters.status" class="empty-hint">当前状态下没有会话，试试其他状态</span>
-              <span v-else class="empty-hint">还没有会话，或种子会话数据尚未导入</span>
+              <span v-else class="empty-hint">还没有会话，等待真实业务产生</span>
               <el-button v-if="error" @click="load">重新加载</el-button>
               <el-button v-else-if="filters.status" @click="reset">清空筛选条件</el-button>
               <el-button v-else @click="load">刷新列表</el-button>
@@ -159,7 +158,7 @@
 
     <div class="page-tip">
       <i aria-hidden="true" />
-      数据来源 GET /api/demo/sessions · 支持 status 筛选 · 演示数据，后续里程碑完善
+      数据来源 GET /api/console/sessions · 支持 status 筛选 · 只读过渡接口，正式接口按 M1～M6 替换
     </div>
 
     <el-drawer v-model="detailVisible" title="会话详情" size="440px">

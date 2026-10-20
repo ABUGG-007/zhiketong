@@ -3,8 +3,7 @@
     <PageHeader
       eyebrow="OVERVIEW"
       title="数据看板"
-      description="今日服务概况、近 7 日会话与工单趋势，以及坐席实时负载。数据来自 Spring Boot 只读演示接口。"
-      badge="演示数据"
+      description="今日服务概况、近 7 日会话与工单趋势，以及坐席实时负载。数据来自本系统数据库（只读过渡接口 /api/console）。"
     >
       <template #actions>
         <div class="health-chip" :class="healthTone" role="status" :title="`MySQL ${health.mysql} · Redis ${health.redis}`">
@@ -109,7 +108,7 @@
         </div>
         <div v-else class="zk-empty">
           <span v-if="loading">加载趋势数据…</span>
-          <span v-else>暂无趋势数据（等待 /api/demo/overview 返回 trend）</span>
+          <span v-else>暂无趋势数据（等待 /api/console/overview 返回 trend）</span>
         </div>
 
         <div class="trend-foot">
@@ -260,7 +259,7 @@
 
     <div class="dash-footnote">
       <span class="footnote-dot" />
-      演示数据 · 后续里程碑完善（当前接口：<code>/api/demo/overview</code>）
+      只读过渡接口 · 正式接口按 M1～M6 替换（当前接口：<code>/api/console/overview</code>）
     </div>
   </div>
 </template>
@@ -406,8 +405,10 @@ const axisLabels = computed(() =>
 function barHeight(value) {
   const v = Number(value) || 0
   if (!chartMax.value) return '1.5%'
+  // 真实数据为 0 时不渲染柱子，避免空库看起来像有数据
+  if (v <= 0) return '0%'
   const pct = (v / chartMax.value) * 100
-  return `${Math.max(v > 0 ? 3 : 1.2, Math.min(100, pct))}%`
+  return `${Math.max(3, Math.min(100, pct))}%`
 }
 
 const agentTone = (status) =>
@@ -456,7 +457,7 @@ async function loadOverview() {
   } catch (err) {
     error.value =
       err?.response?.status === 404
-        ? 'GET /api/demo/overview 返回 404 —— 后端演示接口尚未部署，指标卡与图表将在接口就绪后自动填充。'
+        ? 'GET /api/console/overview 返回 404 —— 只读过渡接口尚未部署，指标卡与图表将在接口就绪后自动填充。'
         : err?.message || '请求失败，请确认后端 8080 正常运行'
     overview.value = null
   } finally {

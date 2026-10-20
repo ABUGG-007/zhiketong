@@ -4,7 +4,6 @@
       eyebrow="ACCOUNTS"
       title="用户管理"
       description="系统账号、角色与登录状态。管理员可访问全部模块，坐席处理会话与工单，普通用户仅参与会话。"
-      badge="演示数据"
     >
       <template #actions>
         <el-button :icon="Refresh" :loading="loading" @click="load">刷新</el-button>
@@ -97,9 +96,9 @@
                 <el-icon><User /></el-icon>
               </div>
               <p>{{ error || '暂无匹配的账号' }}</p>
-              <span v-if="error" class="empty-hint">请确认后端 /api/demo/users 已就绪</span>
+              <span v-if="error" class="empty-hint">请确认后端 /api/console/users 已就绪</span>
               <span v-else-if="filters.roleCode" class="empty-hint">该角色下没有账号，试试其他角色</span>
-              <span v-else class="empty-hint">还没有账号，或种子数据尚未导入</span>
+              <span v-else class="empty-hint">还没有账号，等待 M1 真实创建</span>
               <el-button v-if="error" @click="load">重新加载</el-button>
               <el-button v-else-if="filters.roleCode" @click="reset">清空角色筛选</el-button>
               <el-button v-else @click="load">刷新列表</el-button>
@@ -125,7 +124,7 @@
 
     <div class="page-tip">
       <i aria-hidden="true" />
-      数据来源 GET /api/demo/users · 账号密码由 BCrypt 加密存储 · 演示数据，新增/编辑功能后续里程碑完善
+      数据来源 GET /api/console/users · 账号密码由 BCrypt 加密存储 · 新增/编辑功能后续里程碑完善
     </div>
   </div>
 </template>

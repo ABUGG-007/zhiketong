@@ -1,5 +1,5 @@
 /**
- * 演示端字典与格式化工具
+ * 前端字典与格式化工具
  * tone 对应 StatusPill 组件的配色：teal / indigo / amber / red / slate / green
  */
 

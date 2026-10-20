@@ -4,7 +4,6 @@
       eyebrow="KNOWLEDGE BASE"
       title="知识库"
       description="标准问答条目维护视图。AI 接待时按关键词与语义匹配，命中即直接回复；可点击行或使用「查看」按钮打开完整答案。"
-      badge="演示数据"
     >
       <template #actions>
         <el-button :icon="Refresh" :loading="loading" @click="reload">刷新</el-button>
@@ -12,7 +11,7 @@
     </PageHeader>
 
     <div class="zk-card">
-      <!-- 分类概览（/api/demo/categories） -->
+      <!-- 分类概览（/api/console/categories） -->
       <div class="cat-strip" role="group" aria-label="知识分类概览">
         <span class="cat-strip-label">分类概览</span>
         <span class="cat-chip is-total">全部条目 <b class="zk-num">{{ allEntries }}</b></span>
@@ -129,11 +128,11 @@
                 <el-icon><Collection /></el-icon>
               </div>
               <p>{{ error || '暂无匹配的知识条目' }}</p>
-              <span v-if="error" class="empty-hint">请确认后端 /api/demo/kb/entries 已就绪</span>
+              <span v-if="error" class="empty-hint">请确认后端 /api/console/kb/entries 已就绪</span>
               <span v-else-if="filters.keyword" class="empty-hint">
                 当前关键词没有命中，换一个说法或清空筛选
               </span>
-              <span v-else class="empty-hint">知识库还没有条目，或种子数据尚未导入</span>
+              <span v-else class="empty-hint">知识库还没有条目，等待通过 M2 知识库管理真实录入</span>
               <el-button v-if="error" @click="reload">重新加载</el-button>
               <el-button v-else-if="filters.keyword" @click="reset">清空筛选条件</el-button>
               <el-button v-else @click="reload">刷新列表</el-button>
@@ -159,7 +158,7 @@
 
     <div class="page-tip">
       <i aria-hidden="true" />
-      数据来源 GET /api/demo/kb/entries · 分类来自 GET /api/demo/categories · 演示数据，后续里程碑完善
+      数据来源 GET /api/console/kb/entries · 分类来自 GET /api/console/categories · 只读过渡接口，正式接口按 M1～M6 替换
     </div>
 
     <!-- 答案详情 -->

@@ -4,7 +4,6 @@
       eyebrow="WORK ORDERS"
       title="工单中心"
       description="按状态、优先级与关键词检索工单。SLA 截止时间已过的工单会在左侧标红，处理人展示当前受理坐席。"
-      badge="演示数据"
     >
       <template #actions>
         <el-button :icon="Refresh" :loading="loading" @click="load">刷新</el-button>
@@ -129,9 +128,9 @@
                 <el-icon><Tickets /></el-icon>
               </div>
               <p>{{ error || '暂无匹配的工单' }}</p>
-              <span v-if="error" class="empty-hint">请确认后端 /api/demo/workorders 已就绪</span>
+              <span v-if="error" class="empty-hint">请确认后端 /api/console/workorders 已就绪</span>
               <span v-else-if="hasFilter" class="empty-hint">当前筛选条件下没有工单，试试放宽条件</span>
-              <span v-else class="empty-hint">还没有工单，或种子数据尚未导入</span>
+              <span v-else class="empty-hint">还没有工单，等待真实业务产生</span>
               <el-button v-if="error" @click="load">重新加载</el-button>
               <el-button v-else-if="hasFilter" @click="reset">清空筛选条件</el-button>
               <el-button v-else @click="load">刷新列表</el-button>
@@ -157,7 +156,7 @@
 
     <div class="page-tip">
       <i aria-hidden="true" />
-      数据来源 GET /api/demo/workorders · 支持 status / priority / keyword 筛选 · 演示数据，后续里程碑完善
+      数据来源 GET /api/console/workorders · 支持 status / priority / keyword 筛选 · 只读过渡接口，正式接口按 M1～M6 替换
     </div>
   </div>
 </template>

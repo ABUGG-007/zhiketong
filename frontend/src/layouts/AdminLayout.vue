@@ -64,7 +64,7 @@
             <span v-if="!collapsed || mobileOpen" class="side-label">系统服务</span>
           </div>
           <div v-if="!collapsed || mobileOpen" class="side-value">{{ healthText }}</div>
-          <div v-if="!collapsed || mobileOpen" class="side-note">M3 演示版 · v1.0</div>
+          <div v-if="!collapsed || mobileOpen" class="side-note">v1.0 · 只读数据</div>
         </div>
       </div>
     </aside>

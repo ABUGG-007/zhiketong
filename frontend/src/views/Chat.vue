@@ -3,8 +3,7 @@
     <PageHeader
       eyebrow="AI ASSISTANT"
       title="AI 聊天"
-      description="用户体验端演示：消息发送到 POST /api/ai/chat，命中知识库直接回复，未命中调用大模型；无 Key 或超时时返回降级话术并打上标记。"
-      badge="演示数据"
+      description="用户体验端：消息发送到 POST /api/ai/chat，命中知识库直接回复，未命中调用大模型；无 Key 或超时时返回降级话术并打上标记。"
     >
       <template #actions>
         <div class="ws-chip" :class="wsTone">
@@ -297,7 +296,7 @@ async function send(text) {
 
 function onTransfer() {
   ElMessage({
-    message: '转人工排队功能将在 M4 里程碑开放，当前为演示界面',
+    message: '转人工排队功能将在 M4 里程碑开放',
     type: 'info',
     duration: 2600
   })

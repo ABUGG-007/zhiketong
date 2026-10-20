@@ -4,7 +4,6 @@
       eyebrow="AGENT DESK"
       title="坐席工作台"
       description="坐席在线状态、并发负载与等待接入队列。等待时长每秒刷新，队列每 30 秒自动拉取一次。"
-      badge="演示数据"
     >
       <template #actions>
         <el-button :icon="Refresh" :loading="loading" @click="reload">刷新</el-button>
@@ -101,8 +100,8 @@
             <el-icon><Headset /></el-icon>
           </div>
           <p>{{ agentsError || '暂无坐席数据' }}</p>
-          <span v-if="agentsError" class="empty-hint">请确认后端 /api/demo/agents 已就绪</span>
-          <span v-else class="empty-hint">还没有坐席在线，或坐席数据尚未导入</span>
+          <span v-if="agentsError" class="empty-hint">请确认后端 /api/console/agents 已就绪</span>
+          <span v-else class="empty-hint">还没有坐席上线</span>
           <el-button v-if="agentsError" @click="loadAgents">重新加载</el-button>
           <el-button v-else @click="loadAgents">刷新列表</el-button>
         </div>
@@ -174,7 +173,7 @@
                 <el-icon><Timer /></el-icon>
               </div>
               <p>{{ queueError || '当前没有等待接入的用户' }}</p>
-              <span v-if="queueError" class="empty-hint">请确认后端 /api/demo/waiting 已就绪</span>
+              <span v-if="queueError" class="empty-hint">请确认后端 /api/console/waiting 已就绪</span>
               <span v-else class="empty-hint">AI 无法解决时会自动进入该队列</span>
               <el-button v-if="queueError" @click="loadWaiting()">重新加载</el-button>
               <el-button v-else @click="loadWaiting()">刷新队列</el-button>
@@ -186,7 +185,7 @@
 
     <div class="page-tip">
       <i aria-hidden="true" />
-      数据来源 GET /api/demo/agents、GET /api/demo/waiting · 接入/挂起等写操作后续里程碑完善
+      数据来源 GET /api/console/agents、GET /api/console/waiting · 接入/挂起等写操作后续里程碑完善
     </div>
   </div>
 </template>
@@ -261,7 +260,7 @@ async function loadAgents() {
     agents.value = []
     agentsError.value =
       error?.response?.status === 404
-        ? '接口返回 404：/api/demo/agents 尚未部署'
+        ? '接口返回 404：/api/console/agents 尚未部署'
         : error?.message || '坐席数据加载失败'
   } finally {
     loading.value = false
@@ -279,7 +278,7 @@ async function loadWaiting(silent = false) {
     waiting.value = []
     queueError.value =
       error?.response?.status === 404
-        ? '接口返回 404：/api/demo/waiting 尚未部署'
+        ? '接口返回 404：/api/console/waiting 尚未部署'
         : error?.message || '等待队列加载失败'
   } finally {
     queueLoading.value = false

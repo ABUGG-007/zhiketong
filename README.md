@@ -25,12 +25,19 @@
 ### 2.1 初始化数据库
 
 ```powershell
-# 建库 + 建表（会先删除同名表，仅用于开发/演示环境）
 $env:MYSQL_PWD='246790'
-& 'F:\MySQL\MySQL Server 8.0\bin\mysql.exe' -uroot < sql/01_schema.sql
-# 初始化演示数据
-& 'F:\MySQL\MySQL Server 8.0\bin\mysql.exe' -uroot < sql/02_data.sql
+$mysql = 'F:\MySQL\MySQL Server 8.0\bin\mysql.exe'
+# 建库 + 建表（会先删除同名表，仅用于开发环境）
+& $mysql -uroot --default-character-set=utf8mb4 -e "source sql/01_schema.sql"
+# 最小初始化：3 个角色 + admin/agent01/user01 三个账号；业务表为空
+& $mysql -uroot --default-character-set=utf8mb4 -e "source sql/02_data.sql"
 Remove-Item Env:MYSQL_PWD
+```
+
+可选演示数据（**默认不导入**，仅用于版式演示/答辩，属于人为构造数据）：
+
+```powershell
+& 'F:\MySQL\MySQL Server 8.0\bin\mysql.exe' -uroot --default-character-set=utf8mb4 -e "source sql/demo/02_demo_data.sql"
 ```
 
 若 MySQL 密码不同，修改 `src/main/resources/application.yml` 中的
@@ -66,7 +73,7 @@ mvn spring-boot:run
 `ai_call_log`，不影响演示。也可在 `application.yml` 中通过 `zhiketong.ai.*` 调整为
 其它 OpenAI 兼容服务（如通义千问兼容模式）。
 
-### 2.4 启动前端演示（Vue3 + Element Plus）
+### 2.4 启动前端（Vue3 + Element Plus）
 
 前端位于 `frontend/`，当前提供登录、数据看板、知识库、工单、会话、坐席、用户管理与 AI 聊天 8 个页面。
 本机沙箱禁止 Vite 的 esbuild 子进程，因此使用零依赖构建 + 静态代理脚本启动（普通环境可直接 `npm run dev`）：
@@ -84,26 +91,28 @@ cd ..
 node serve-frontend.mjs
 ```
 
-访问 **http://127.0.0.1:5173**，使用演示账号登录即可。前端登录页、看板与 AI 聊天页截图见
+访问 **http://127.0.0.1:5173**，使用初始化账号登录即可。前端登录页、看板与 AI 聊天页截图见
 [docs/screenshots](docs/screenshots)。
 
-> 说明：`/api/demo/*` 是只读演示接口（看板与列表数据），正式业务接口按 M1～M6 替换；
-> AI 聊天调用 `/api/ai/chat`，未配置 Key 时展示降级话术并标注「降级回复」。
+> 说明：`/api/console/*` 是只读过渡接口，直接查询本系统 MySQL 业务表；正式业务接口按 M1～M6 替换。
+> 默认初始化后知识库、会话、工单等业务表为空，页面会展示真实空态；
+> 如需查看带数据的版式，可手动导入 `sql/demo/02_demo_data.sql`（可选演示数据集，非真实业务）。
 
 ---
 
-## 3. 演示账号
+## 3. 初始化账号
 
-所有账号初始密码均为 `123456`（BCrypt 存储）。
+首次初始化只创建 3 个账号，密码均为 `123456`（BCrypt 存储），**首次登录后请立即修改密码**。
+其余用户/坐席/知识库/会话/工单数据由 M1～M6 的真实功能产生，不再预置。
 
 | 账号 | 角色 | 说明 |
 |------|------|------|
 | admin | ADMIN | 管理员，可进系统管理、统计、知识库 |
-| agent01 | AGENT | 客服坐席（种子数据中为在线状态） |
-| agent02 | AGENT | 客服坐席（种子数据中为离线状态） |
+| agent01 | AGENT | 客服坐席（初始为离线，需在工作台真实上线） |
 | user01 | USER | 普通用户 |
-| user02 | USER | 普通用户 |
-| user03 | USER | 已禁用，用于验证登录拦截 |
+
+> 如果导入了可选的 `sql/demo/02_demo_data.sql`，会额外出现 agent02、user02、user03 等演示账号，
+> 以及演示用的知识、会话、工单数据；这些都不是真实业务数据。
 
 ---
 
@@ -116,12 +125,15 @@ smart-customer-service/
 ├─ .mvn/maven.config              # 本地 Maven 仓库重定向
 ├─ sql/
 │  ├─ 01_schema.sql               # 建库 + 11 张表
-│  └─ 02_data.sql                 # 演示种子数据
+│  ├─ 02_data.sql                 # 最小初始化：3 角色 + 3 账号（业务表为空）
+│  └─ demo/
+│     ├─ 02_demo_data.sql         # 可选演示数据（默认不导入，非真实业务）
+│     └─ README.md                # 演示数据使用说明
 ├─ docs/
 │  ├─ 数据库设计.md                # ER、表字典、索引、Redis 键
 │  ├─ 接口与WebSocket协议.md       # REST + WS 协议规范
 │  └─ screenshots/                # 登录页、看板、AI 聊天页截图
-├─ frontend/                      # Vue3 + Vite + Element Plus 演示端
+├─ frontend/                      # Vue3 + Vite + Element Plus 前端
 │  ├─ src/views/                  # Login / Dashboard / Knowledge / Orders / Sessions / Agents / Users / Chat
 │  ├─ scripts/build.mjs           # 沙箱兼容构建脚本
 │  └─ dist/                       # 构建产物（由 serve-frontend.mjs 托管）
@@ -130,8 +142,8 @@ smart-customer-service/
 │  ├─ common/                     # Result、异常、常量、工具
 │  ├─ config/                     # MyBatis-Plus、Redis、Security、WebSocket、Swagger
 │  ├─ security/                   # JWT、认证过滤器、握手拦截
-│  ├─ controller/                 # Auth / Health / AI / Demo
-│  ├─ service/                    # AuthService、DemoService
+│  ├─ controller/                 # Auth / Health / AI / Console
+│  ├─ service/                    # AuthService、ConsoleService
 │  ├─ ai/                         # DeepSeek 客户端与降级
 │  ├─ websocket/                  # WS 会话管理、消息处理器
 │  ├─ entity/ mapper/ enums/      # 11 表实体、Mapper、枚举
@@ -144,7 +156,7 @@ smart-customer-service/
 ## 5. 已完成（V1.0 骨架）
 
 - [x] Maven 工程、统一依赖版本、Java 8 编译
-- [x] 11 张业务表 DDL + 演示数据（用户/知识库/会话/消息/工单/日志）
+- [x] 11 张业务表 DDL + 最小初始化（3 个角色、3 个账号；业务表为空）
 - [x] 统一响应 `Result`、全局异常处理、分页结构 `PageResult`
 - [x] JWT 登录/注册/登出/当前用户/改密（BCrypt + Redis Token 黑名单）
 - [x] Spring Security 无状态鉴权、CORS、401/403 JSON 返回
@@ -152,9 +164,10 @@ smart-customer-service/
 - [x] DeepSeek 客户端（超时、失败降级、调用日志）
 - [x] WebSocket 握手鉴权、连接管理、心跳、统一消息信封
 - [x] Swagger 在线接口文档
-- [x] 前端演示端：登录、看板（真实种子数据）、知识库、工单、会话、坐席、用户、AI 聊天
-- [x] 只读演示接口 `/api/demo/*`（看板/列表数据，后续由正式接口替换）
+- [x] 前端 8 个页面：登录、看板、知识库、工单、会话、坐席、用户、AI 聊天
+- [x] 控制台只读过渡接口 `/api/console/*`（直接查询 MySQL，正式接口 M1～M6 替换）
 - [x] UI/UX v2：统一设计令牌、键盘焦点、移动端抽屉、触控尺寸、空态/加载态、reduced-motion、表格与图表可读性
+- [x] 可选演示数据集 `sql/demo/02_demo_data.sql`（默认不导入，明确标注非真实业务）
 
 ## 6. 后续里程碑
 
@@ -176,7 +189,7 @@ smart-customer-service/
 |------|------|
 | `AccessDeniedException: D:\Maven\maven-repository` | 已通过 `.mvn/maven.config` 规避；若仍出现，执行 `mvn -Dmaven.repo.local=.m2repo ...` |
 | 启动报 Redis 连接失败 | 确认 Redis 服务已启动（`redis-cli ping` 返回 PONG）；旧版 Redis 若报命令不支持，可在 `application.yml` 关闭相关功能或升级 Redis |
-| 登录返回「用户名或密码错误」 | 确认已执行 `sql/02_data.sql`；账号密码为 `123456` |
+| 登录返回「用户名或密码错误」 | 确认已执行 `sql/02_data.sql`；初始账号密码为 `123456`，首次登录后请修改 |
 | 端口 8080 被占用 | 修改 `server.port` 或关闭占用进程 |
 | 中文乱码 | 终端执行 `chcp 65001`；数据库已统一 utf8mb4 |
 
@@ -198,8 +211,15 @@ smart-customer-service/
 |------|----------|
 | ![移动端看板](docs/screenshots/07-mobile-dashboard.png) | ![移动端导航](docs/screenshots/09-mobile-nav.png) |
 
+> 以下截图采集时使用了**可选的演示数据集**（`sql/demo/02_demo_data.sql`）以展示有数据时的版式；
+> 默认初始化后业务表为空，页面展示真实空态（见下方「默认空库真实状态」）。演示数据仅用于视觉验收，不代表任何真实业务记录。
+
 > 本轮按 UI/UX Pro Max 规则完成对比度、焦点态、移动端抽屉、触控尺寸、空态/加载态、
 > reduced-motion、图表可读性等优化，详见 [docs/UI优化说明.md](docs/UI优化说明.md)。
+
+### 默认空库真实状态（3 个初始化账号、业务表为空）
+
+![默认空库看板](docs/screenshots/10-empty-dashboard.png)
 
 ---
 
