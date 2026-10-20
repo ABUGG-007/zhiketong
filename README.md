@@ -66,6 +66,30 @@ mvn spring-boot:run
 `ai_call_log`，不影响演示。也可在 `application.yml` 中通过 `zhiketong.ai.*` 调整为
 其它 OpenAI 兼容服务（如通义千问兼容模式）。
 
+### 2.4 启动前端演示（Vue3 + Element Plus）
+
+前端位于 `frontend/`，当前提供登录、数据看板、知识库、工单、会话、坐席、用户管理与 AI 聊天 8 个页面。
+本机沙箱禁止 Vite 的 esbuild 子进程，因此使用零依赖构建 + 静态代理脚本启动（普通环境可直接 `npm run dev`）：
+
+```powershell
+# 1) 安装依赖（首次）
+cd frontend
+npm install --cache .npm-cache
+
+# 2) 构建（本机已验证脚本，绕开 esbuild 子进程限制）
+node scripts/build.mjs
+
+# 3) 启动前端（根目录执行；静态托管 dist，并代理 /api、/ws 到 8080）
+cd ..
+node serve-frontend.mjs
+```
+
+访问 **http://127.0.0.1:5173**，使用演示账号登录即可。前端登录页、看板与 AI 聊天页截图见
+[docs/screenshots](docs/screenshots)。
+
+> 说明：`/api/demo/*` 是只读演示接口（看板与列表数据），正式业务接口按 M1～M6 替换；
+> AI 聊天调用 `/api/ai/chat`，未配置 Key 时展示降级话术并标注「降级回复」。
+
 ---
 
 ## 3. 演示账号
@@ -88,20 +112,26 @@ mvn spring-boot:run
 ```
 smart-customer-service/
 ├─ pom.xml
+├─ serve-frontend.mjs             # 前端静态服务（零依赖，代理 /api、/ws）
 ├─ .mvn/maven.config              # 本地 Maven 仓库重定向
 ├─ sql/
 │  ├─ 01_schema.sql               # 建库 + 11 张表
 │  └─ 02_data.sql                 # 演示种子数据
 ├─ docs/
 │  ├─ 数据库设计.md                # ER、表字典、索引、Redis 键
-│  └─ 接口与WebSocket协议.md       # REST + WS 协议规范
+│  ├─ 接口与WebSocket协议.md       # REST + WS 协议规范
+│  └─ screenshots/                # 登录页、看板、AI 聊天页截图
+├─ frontend/                      # Vue3 + Vite + Element Plus 演示端
+│  ├─ src/views/                  # Login / Dashboard / Knowledge / Orders / Sessions / Agents / Users / Chat
+│  ├─ scripts/build.mjs           # 沙箱兼容构建脚本
+│  └─ dist/                       # 构建产物（由 serve-frontend.mjs 托管）
 ├─ src/main/java/com/zhiketong/
 │  ├─ ZhiketongApplication.java
 │  ├─ common/                     # Result、异常、常量、工具
 │  ├─ config/                     # MyBatis-Plus、Redis、Security、WebSocket、Swagger
 │  ├─ security/                   # JWT、认证过滤器、握手拦截
-│  ├─ controller/                 # Auth / Health / AI
-│  ├─ service/                    # AuthService
+│  ├─ controller/                 # Auth / Health / AI / Demo
+│  ├─ service/                    # AuthService、DemoService
 │  ├─ ai/                         # DeepSeek 客户端与降级
 │  ├─ websocket/                  # WS 会话管理、消息处理器
 │  ├─ entity/ mapper/ enums/      # 11 表实体、Mapper、枚举
@@ -122,6 +152,8 @@ smart-customer-service/
 - [x] DeepSeek 客户端（超时、失败降级、调用日志）
 - [x] WebSocket 握手鉴权、连接管理、心跳、统一消息信封
 - [x] Swagger 在线接口文档
+- [x] 前端演示端：登录、看板（真实种子数据）、知识库、工单、会话、坐席、用户、AI 聊天
+- [x] 只读演示接口 `/api/demo/*`（看板/列表数据，后续由正式接口替换）
 
 ## 6. 后续里程碑
 
@@ -149,7 +181,17 @@ smart-customer-service/
 
 ---
 
-## 8. 文档索引
+## 8. 界面预览
+
+| 登录页 | 数据看板 |
+|--------|----------|
+| ![登录页](docs/screenshots/01-login.png) | ![数据看板](docs/screenshots/02-dashboard.png) |
+
+![AI 聊天](docs/screenshots/03-chat.png)
+
+---
+
+## 9. 文档索引
 
 - [项目开发文档.md](项目开发文档.md) —— 总纲：需求、架构、规范、页面、里程碑、验收
 - [docs/数据库设计.md](docs/数据库设计.md) —— 数据库设计明细
