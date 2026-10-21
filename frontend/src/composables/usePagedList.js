@@ -46,7 +46,7 @@ export function usePagedList(fetcher, initialFilters = {}) {
       pages.value = 0
       error.value =
         err?.response?.status === 404
-          ? '接口返回 404：后端演示接口尚未部署，稍后刷新即可。'
+          ? '接口返回 404：后端接口尚未部署，稍后刷新即可。'
           : err?.message || '数据加载失败，请确认后端服务正常运行'
     } finally {
       loaded.value = true

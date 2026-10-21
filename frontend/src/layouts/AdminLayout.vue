@@ -64,7 +64,7 @@
             <span v-if="!collapsed || mobileOpen" class="side-label">系统服务</span>
           </div>
           <div v-if="!collapsed || mobileOpen" class="side-value">{{ healthText }}</div>
-          <div v-if="!collapsed || mobileOpen" class="side-note">v1.0 · 只读数据</div>
+          <div v-if="!collapsed || mobileOpen" class="side-note">v1.0 · 实时数据</div>
         </div>
       </div>
     </aside>
@@ -152,11 +152,13 @@ import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import {
   ArrowDown,
+  Avatar,
   ChatDotRound,
   ChatLineSquare,
   Close,
   Collection,
   DataAnalysis,
+  Document,
   Expand,
   Fold,
   Headset,
@@ -249,7 +251,9 @@ const iconMap = {
   Tickets,
   Headset,
   Collection,
-  User
+  User,
+  Avatar,
+  Document
 }
 const iconOf = (name) => iconMap[name] || DataAnalysis
 
@@ -258,9 +262,12 @@ const waitingCount = ref(0)
 
 const groups = computed(() => {
   const collected = []
+  // 菜单与路由守卫共用 meta.roles：当前角色无权访问的页面不出现在侧栏
+  const roleCode = user.value?.roleCode || ''
   for (const record of router.getRoutes()) {
     const meta = record.meta || {}
     if (!meta.group || !meta.title) continue
+    if (Array.isArray(meta.roles) && meta.roles.length && !meta.roles.includes(roleCode)) continue
     let group = collected.find((g) => g.name === meta.group)
     if (!group) {
       group = { name: meta.group, items: [] }

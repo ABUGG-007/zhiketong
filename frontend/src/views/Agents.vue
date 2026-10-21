@@ -10,6 +10,83 @@
       </template>
     </PageHeader>
 
+    <!-- 当前坐席状态（仅 AGENT 可自助操作） -->
+    <div
+      v-if="isAgent"
+      class="my-agent zk-card"
+      role="region"
+      aria-label="我的坐席状态"
+      :aria-busy="statusBusy ? 'true' : 'false'"
+    >
+      <div class="my-agent-main">
+        <div class="my-agent-head">
+          <span class="my-label">我的坐席状态</span>
+          <StatusPill
+            :label="dictLabel(AGENT_STATUS_DICT, myStatus)"
+            :tone="dictTone(AGENT_STATUS_DICT, myStatus)"
+            dot
+          />
+          <span v-if="!myAgent" class="my-hint">尚未建档，点击「上线」创建坐席状态</span>
+        </div>
+        <div class="my-meta">
+          <span v-if="myAgent">
+            负载
+            <b class="zk-num">{{ myAgent.currentCount ?? 0 }}/{{ myAgent.maxConcurrent ?? 0 }}</b>
+          </span>
+          <span v-if="myAgent">累计接待 <b class="zk-num">{{ myAgent.totalServed ?? 0 }}</b></span>
+          <span>最近心跳 {{ formatDateTime(myAgent?.lastHeartbeat) }}</span>
+        </div>
+      </div>
+      <div class="my-actions">
+        <el-button
+          v-if="!isOnline"
+          type="primary"
+          :icon="VideoPlay"
+          :loading="statusBusy === 'online'"
+          :disabled="Boolean(statusBusy)"
+          @click="handleAgentAction('online')"
+        >
+          上线
+        </el-button>
+        <template v-else>
+          <el-button
+            :type="myStatus === 'BUSY' ? 'success' : 'warning'"
+            :icon="myStatus === 'BUSY' ? CircleCheck : Coffee"
+            :loading="statusBusy === (myStatus === 'BUSY' ? 'ONLINE' : 'BUSY')"
+            :disabled="Boolean(statusBusy)"
+            @click="handleAgentAction(myStatus === 'BUSY' ? 'ONLINE' : 'BUSY')"
+          >
+            {{ myStatus === 'BUSY' ? '恢复在线' : '设为忙碌' }}
+          </el-button>
+          <el-button
+            :icon="SwitchButton"
+            :loading="statusBusy === 'offline'"
+            :disabled="Boolean(statusBusy)"
+            @click="handleAgentAction('offline')"
+          >
+            下线
+          </el-button>
+        </template>
+      </div>
+    </div>
+
+    <div
+      v-else
+      class="my-agent my-agent--readonly zk-card"
+      role="region"
+      aria-label="坐席状态说明"
+    >
+      <div class="my-agent-main">
+        <div class="my-agent-head">
+          <span class="my-label">坐席状态管理</span>
+          <StatusPill label="只读视角" tone="slate" />
+        </div>
+        <div class="my-meta">
+          当前登录角色为{{ roleLabel }}，仅坐席（AGENT）可自助上线 / 下线 / 切换忙碌；管理员可查看全部坐席负载。
+        </div>
+      </div>
+    </div>
+
     <!-- 概览 -->
     <div class="agent-summary" role="group" aria-label="坐席状态概览">
       <div class="summary-item">
@@ -40,13 +117,22 @@
       aria-label="坐席状态列表"
       :aria-busy="loading ? 'true' : 'false'"
     >
-      <article v-for="agent in agents" :key="agent.agentId" class="agent-tile" role="listitem">
+      <article
+        v-for="agent in agents"
+        :key="agent.agentId"
+        class="agent-tile"
+        :class="{ 'is-self': isSelfAgent(agent) }"
+        role="listitem"
+      >
         <div class="tile-head">
           <div class="tile-avatar" :class="statusTone(agent.onlineStatus)" aria-hidden="true">
             {{ (agent.nickname || '坐').slice(0, 1) }}
           </div>
           <div class="tile-id">
-            <div class="tile-name">{{ agent.nickname || `坐席 ${agent.agentId}` }}</div>
+            <div class="tile-name">
+              {{ agent.nickname || `坐席 ${agent.agentId}` }}
+              <span v-if="isSelfAgent(agent)" class="tile-self">我</span>
+            </div>
             <div class="tile-sub">坐席 ID · {{ agent.agentId }}</div>
           </div>
           <StatusPill
@@ -192,12 +278,23 @@
 
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
-import { Headset, Refresh, Timer } from '@element-plus/icons-vue'
+import { ElMessage } from 'element-plus'
+import {
+  CircleCheck,
+  Coffee,
+  Headset,
+  Refresh,
+  SwitchButton,
+  Timer,
+  VideoPlay
+} from '@element-plus/icons-vue'
 import PageHeader from '@/components/PageHeader.vue'
 import StatusPill from '@/components/StatusPill.vue'
-import { getAgents, getWaitingQueue } from '@/api'
+import { agentOffline, agentOnline, agentSetStatus, getAgents, getWaitingQueue } from '@/api'
+import { getUser } from '@/api/http'
 import {
   AGENT_STATUS_DICT,
+  ROLE_DICT,
   dictLabel,
   dictTone,
   formatDateTime,
@@ -205,12 +302,28 @@ import {
   percent
 } from '@/utils/dict'
 
+const currentUser = getUser()
+
 const agents = ref([])
 const waiting = ref([])
 const loading = ref(false)
 const queueLoading = ref(false)
 const agentsError = ref('')
 const queueError = ref('')
+
+/* ---------- 当前登录坐席状态 ---------- */
+const isAgent = computed(() => currentUser?.roleCode === 'AGENT')
+const roleLabel = computed(() => dictLabel(ROLE_DICT, currentUser?.roleCode, '访客'))
+const myAgent = computed(
+  () =>
+    agents.value.find(
+      (agent) => Number(agent.agentId) === Number(currentUser?.id)
+    ) || null
+)
+const myStatus = computed(() => myAgent.value?.onlineStatus || 'OFFLINE')
+const isOnline = computed(() => myStatus.value === 'ONLINE' || myStatus.value === 'BUSY')
+const statusBusy = ref('')
+const isSelfAgent = (agent) => Number(agent?.agentId) === Number(currentUser?.id)
 
 const fetchedAt = ref(Date.now())
 const nowTick = ref(Date.now())
@@ -248,6 +361,29 @@ const waitLevel = (row) => {
   if (seconds >= 180) return 'danger'
   if (seconds >= 60) return 'warn'
   return 'normal'
+}
+
+/** 坐席上线 / 下线 / 忙碌切换；成功后刷新坐席与队列 */
+async function handleAgentAction(action) {
+  if (!isAgent.value || statusBusy.value) return
+  statusBusy.value = action
+  try {
+    if (action === 'online') {
+      await agentOnline({ maxConcurrent: Number(myAgent.value?.maxConcurrent) || 5 })
+      ElMessage.success('已上线，可开始接待排队会话')
+    } else if (action === 'offline') {
+      await agentOffline()
+      ElMessage.success('已下线')
+    } else {
+      await agentSetStatus(action)
+      ElMessage.success(action === 'BUSY' ? '已设为忙碌，暂停分配新会话' : '已恢复在线')
+    }
+    await Promise.all([loadAgents(), loadWaiting(true)])
+  } catch {
+    // 409（仍有进行中会话）等业务错误已由 http 拦截器展示后端 message
+  } finally {
+    statusBusy.value = ''
+  }
 }
 
 async function loadAgents() {
@@ -348,6 +484,75 @@ onBeforeUnmount(() => {
   font-size: 11.5px;
   line-height: 1.7;
   color: var(--zk-text-3);
+}
+
+/* 我的坐席状态（仅 AGENT） */
+.my-agent {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  flex-wrap: wrap;
+  padding: 16px 22px;
+  margin-bottom: 16px;
+}
+
+.my-agent--readonly {
+  background: var(--zk-surface-2);
+}
+
+.my-agent-main {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.my-agent-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.my-label {
+  font-size: 13px;
+  font-weight: 650;
+  color: var(--zk-text);
+}
+
+.my-hint {
+  font-size: 11.5px;
+  color: var(--zk-text-3);
+}
+
+.my-meta {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--zk-text-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.my-meta b {
+  color: var(--zk-text);
+  font-weight: 650;
+}
+
+.my-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.my-actions .el-button {
+  min-height: 38px;
+  padding: 0 16px;
+  font-weight: 600;
 }
 
 /* 坐席卡片 */
@@ -531,6 +736,11 @@ onBeforeUnmount(() => {
   background: var(--zk-border-strong);
 }
 
+.agent-tile.is-self {
+  border-color: var(--zk-teal-line);
+  box-shadow: 0 0 0 1px rgba(20, 184, 166, 0.14), var(--zk-shadow-sm);
+}
+
 .agent-empty {
   grid-column: 1 / -1;
 }
@@ -681,6 +891,19 @@ onBeforeUnmount(() => {
   .summary-desc {
     grid-column: 1 / -1;
     min-width: 0;
+  }
+
+  .my-agent {
+    align-items: flex-start;
+    padding: 14px 16px;
+  }
+
+  .my-actions {
+    width: 100%;
+  }
+
+  .my-actions .el-button {
+    flex: 1 1 auto;
   }
 
   .queue-card .zk-card-head {

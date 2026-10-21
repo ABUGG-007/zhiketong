@@ -74,7 +74,7 @@ http.interceptors.response.use(
         return Promise.reject(Object.assign(new Error(message), { code }))
       }
       if (code === 403) {
-        if (!silent) ElMessage.error('无权限访问该资源')
+        if (!silent) ElMessage.error(message || '无权限访问该资源')
         return Promise.reject(Object.assign(new Error(message), { code }))
       }
       if (code === 404) {
@@ -98,7 +98,7 @@ http.interceptors.response.use(
     }
     if (silent) return Promise.reject(error)
     if (status === 403) {
-      ElMessage.error('无权限访问该资源')
+      ElMessage.error(serverMsg || '无权限访问该资源')
     } else if (status === 404) {
       ElMessage.warning(message || '接口暂未开放（404）')
     } else if (status >= 500) {

@@ -1,5 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import { getToken } from '@/api/http'
+import { getToken, getUser } from '@/api/http'
 
 const routes = [
   {
@@ -101,7 +101,36 @@ const routes = [
           subtitle: '系统账号、角色与登录状态',
           icon: 'User',
           group: '系统',
-          order: 7
+          order: 7,
+          roles: ['ADMIN']
+        }
+      },
+      {
+        path: 'roles',
+        name: 'roles',
+        component: () => import('@/views/Roles.vue'),
+        meta: {
+          title: '角色管理',
+          short: '角色',
+          subtitle: 'V1.0 固定三角色 · 角色仅用于分配用户',
+          icon: 'Avatar',
+          group: '系统',
+          order: 8,
+          roles: ['ADMIN']
+        }
+      },
+      {
+        path: 'login-logs',
+        name: 'login-logs',
+        component: () => import('@/views/LoginLogs.vue'),
+        meta: {
+          title: '登录日志',
+          short: '登录日志',
+          subtitle: '登录成功 / 失败记录、来源 IP 与客户端',
+          icon: 'Document',
+          group: '系统',
+          order: 9,
+          roles: ['ADMIN']
         }
       }
     ]
@@ -125,6 +154,16 @@ router.beforeEach((to) => {
   if (to.name === 'login' && logged) {
     return { name: 'dashboard' }
   }
+
+  // 页面级角色校验：已登录但角色不在 meta.roles 内则退回看板
+  const requiredRoles = to.meta?.roles
+  if (Array.isArray(requiredRoles) && requiredRoles.length) {
+    const roleCode = getUser()?.roleCode
+    if (!roleCode || !requiredRoles.includes(roleCode)) {
+      return { name: 'dashboard' }
+    }
+  }
+
   return true
 })
 

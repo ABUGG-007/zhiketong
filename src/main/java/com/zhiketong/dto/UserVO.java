@@ -24,7 +24,9 @@ public class UserVO implements Serializable {
     private String avatar;
     private Integer status;
     private LocalDateTime lastLoginTime;
+    private String lastLoginIp;
     private LocalDateTime createTime;
+    private LocalDateTime updateTime;
 
     /**
      * 实体转 VO。
@@ -43,7 +45,9 @@ public class UserVO implements Serializable {
         vo.setAvatar(user.getAvatar());
         vo.setStatus(user.getStatus());
         vo.setLastLoginTime(user.getLastLoginTime());
+        vo.setLastLoginIp(user.getLastLoginIp());
         vo.setCreateTime(user.getCreateTime());
+        vo.setUpdateTime(user.getUpdateTime());
         vo.setRoleName(roleNameOf(user.getRoleCode()));
         return vo;
     }
