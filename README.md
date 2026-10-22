@@ -12,7 +12,7 @@
 | JDK | 8（必须，Spring Boot 2.7 不支持更高版本编译目标） | 1.8.0_202 |
 | Maven | 3.6+ | 3.9.13 |
 | MySQL | 8.0+ | 8.0.45（端口 3306） |
-| Redis | 3.0+ | 3.0.504（端口 6379） |
+| Redis | 6.x | 6.0.16（WSL Ubuntu-22.04，端口 6380） |
 | Node.js | 18+（前端阶段使用） | 24.11.1 |
 
 > 说明：工程内 `.mvn/maven.config` 将 Maven 本地仓库指向工程目录下的 `.m2repo`，
@@ -43,7 +43,24 @@ Remove-Item Env:MYSQL_PWD
 若 MySQL 密码不同，修改 `src/main/resources/application.yml` 中的
 `spring.datasource.password`，或设置环境变量 `MYSQL_PASSWORD`。
 
-### 2.2 启动后端
+### 2.2 启动 Redis（WSL Ubuntu）与后端
+
+Redis 跑在 WSL2 的 `Ubuntu-22.04` 中，端口 `6380`，密码 `246790`：
+
+```powershell
+# 首次已安装并配置；若 WSL 重启后未自动启动，执行：
+wsl -d Ubuntu-22.04 -u root service redis-server start
+
+# 验证（WSL 内 / Windows 侧各一次）
+wsl -d Ubuntu-22.04 -- redis-cli -p 6380 -a 246790 ping
+& 'C:\Program Files\Redis\redis-cli.exe' -h 127.0.0.1 -p 6380 -a 246790 ping
+```
+
+`/etc/wsl.conf` 已配置 `[boot] command = service redis-server start`，WSL 启动时会自动拉起 Redis；
+`.wslconfig` 已启用 `networkingMode=mirrored`，Windows 侧通过 `127.0.0.1:6380` 访问。
+如需回退原来的 Windows Redis 6379，设置 `$env:REDIS_PORT='6379'; $env:REDIS_PASSWORD=''` 后启动后端。
+
+后端启动：
 
 ```powershell
 # 方式一：直接运行
@@ -206,7 +223,7 @@ smart-customer-service/
 | 问题 | 处理 |
 |------|------|
 | `AccessDeniedException: D:\Maven\maven-repository` | 已通过 `.mvn/maven.config` 规避；若仍出现，执行 `mvn -Dmaven.repo.local=.m2repo ...` |
-| 启动报 Redis 连接失败 | 确认 Redis 服务已启动（`redis-cli ping` 返回 PONG）；旧版 Redis 若报命令不支持，可在 `application.yml` 关闭相关功能或升级 Redis |
+| 启动报 Redis 连接失败 | 先启动 WSL Redis：`wsl -d Ubuntu-22.04 -u root service redis-server start`；验证 `wsl -d Ubuntu-22.04 -- redis-cli -p 6380 -a 246790 ping`；确认 `.wslconfig` 的 `networkingMode=mirrored` 已生效（`wsl --shutdown` 后重新进入） |
 | 登录返回「用户名或密码错误」 | 确认已执行 `sql/02_data.sql`；初始账号密码为 `123456`，首次登录后请修改 |
 | 端口 8080 被占用 | 修改 `server.port` 或关闭占用进程 |
 | 中文乱码 | 终端执行 `chcp 65001`；数据库已统一 utf8mb4 |

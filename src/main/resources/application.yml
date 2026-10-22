@@ -26,9 +26,12 @@ spring:
       max-lifetime: 1800000
       pool-name: ZhiKeTongHikariCP
   redis:
-    host: ${REDIS_HOST:localhost}
-    port: ${REDIS_PORT:6379}
-    password: ${REDIS_PASSWORD:}
+    # WSL2 的 localhost 转发在部分环境只会走 IPv4，固定 127.0.0.1 避免解析到 ::1
+    host: ${REDIS_HOST:127.0.0.1}
+    # WSL Ubuntu-22.04 内的 Redis 6.0.16（6380，已设密码）；
+    # 如需回退 Windows Redis 6379，设置 REDIS_PORT=6379、REDIS_PASSWORD=
+    port: ${REDIS_PORT:6380}
+    password: ${REDIS_PASSWORD:246790}
     database: 0
     timeout: 3000ms
     lettuce:
