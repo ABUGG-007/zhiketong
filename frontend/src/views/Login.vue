@@ -140,6 +140,7 @@ import {
 } from '@element-plus/icons-vue'
 import { getHealth, login } from '@/api'
 import { saveAuth } from '@/api/http'
+import { roleHomePath } from '@/router'
 
 const router = useRouter()
 const route = useRoute()
@@ -202,6 +203,16 @@ const healthText = computed(() => {
   return '后端服务未连接（请确认 8080 已启动）'
 })
 
+/** 仅允许跳转到当前角色所属入口（或旧路径，由路由按角色再重定向） */
+function isRedirectAllowed(path, roleCode) {
+  if (!path || !path.startsWith('/') || path.startsWith('//')) return false
+  if (path.startsWith('/login') || path.startsWith('/403')) return false
+  if (path.startsWith('/admin')) return roleCode === 'ADMIN'
+  if (path.startsWith('/agent')) return roleCode === 'AGENT'
+  if (path.startsWith('/user')) return roleCode === 'USER'
+  return true
+}
+
 async function onSubmit() {
   if (loading.value) return
   const formEl = formRef.value
@@ -223,8 +234,14 @@ async function onSubmit() {
     }
     saveAuth(token, data.user || null)
     ElMessage.success(`欢迎回来，${data.user?.nickname || form.username}`)
+
+    // 按角色落地：ADMIN → /admin/dashboard，AGENT → /agent/workbench，USER → /user/home
+    const roleCode = data.user?.roleCode
     const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : ''
-    router.replace(redirect.startsWith('/') ? redirect : '/dashboard')
+    const target = isRedirectAllowed(redirect, roleCode)
+      ? redirect
+      : roleHomePath(roleCode)
+    router.replace(target)
   } catch (error) {
     errorMessage.value =
       error?.response?.data?.message || error?.message || '登录失败，请检查账号密码'

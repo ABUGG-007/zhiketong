@@ -6,6 +6,7 @@ import com.zhiketong.service.ConsoleService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -29,6 +30,7 @@ public class ConsoleController {
     private final ConsoleService consoleService;
 
     @Operation(summary = "看板概览")
+    @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/overview")
     public Result<Map<String, Object>> overview() {
         return Result.success(consoleService.overview());
@@ -52,6 +54,7 @@ public class ConsoleController {
     }
 
     @Operation(summary = "工单分页")
+    @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/workorders")
     public Result<PageResult<Map<String, Object>>> workOrders(
             @RequestParam(defaultValue = "") String status,
@@ -64,6 +67,7 @@ public class ConsoleController {
     }
 
     @Operation(summary = "会话分页")
+    @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/sessions")
     public Result<PageResult<Map<String, Object>>> sessions(
             @RequestParam(defaultValue = "") String status,
@@ -74,6 +78,7 @@ public class ConsoleController {
     }
 
     @Operation(summary = "用户分页")
+    @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/users")
     public Result<PageResult<Map<String, Object>>> users(
             @RequestParam(defaultValue = "") String roleCode,
@@ -84,12 +89,14 @@ public class ConsoleController {
     }
 
     @Operation(summary = "坐席状态")
+    @PreAuthorize("hasAnyRole('ADMIN','AGENT')")
     @GetMapping("/agents")
     public Result<List<Map<String, Object>>> agents() {
         return Result.success(consoleService.agents());
     }
 
     @Operation(summary = "等待接入队列")
+    @PreAuthorize("hasAnyRole('ADMIN','AGENT')")
     @GetMapping("/waiting")
     public Result<List<Map<String, Object>>> waiting() {
         return Result.success(consoleService.waitingSessions());

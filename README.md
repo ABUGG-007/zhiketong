@@ -75,7 +75,7 @@ mvn spring-boot:run
 
 ### 2.4 启动前端（Vue3 + Element Plus）
 
-前端位于 `frontend/`，当前提供登录、数据看板、知识库、工单、会话、坐席、用户管理、角色管理、登录日志与 AI 聊天 10 个页面。
+前端位于 `frontend/`，已按角色拆成三套入口：**ADMIN 管理端 `/admin`**、**AGENT 坐席端 `/agent`**、**USER 用户端 `/user`**；登录后按角色自动落地，跨角色路由进入 `/403`。
 本机沙箱禁止 Vite 的 esbuild 子进程，因此使用零依赖构建 + 静态代理脚本启动（普通环境可直接 `npm run dev`）：
 
 ```powershell
@@ -95,7 +95,7 @@ node serve-frontend.mjs
 [docs/screenshots](docs/screenshots)。
 
 > 说明：`/api/console/*` 是只读过渡接口，直接查询本系统 MySQL 业务表；M2～M6 正式接口逐步替换。
-> M1 的用户/角色/登录日志/坐席状态已使用正式接口 `/api/admin/*`、`/api/agent/*`。
+> M1 的用户/角色/登录日志/坐席状态已使用正式接口 `/api/admin/*`、`/api/agent/*`；M1.5 已按角色收紧控制台接口，并新增 `/api/user/*` 本人数据接口。
 > 默认初始化后知识库、会话、工单等业务表为空，页面会展示真实空态；
 > 如需查看带数据的版式，可手动导入 `sql/demo/02_demo_data.sql`（可选演示数据集，非真实业务）。
 
@@ -106,11 +106,14 @@ node serve-frontend.mjs
 首次初始化只创建 3 个账号，密码均为 `123456`（BCrypt 存储），**首次登录后请立即修改密码**。
 其余用户/坐席/知识库/会话/工单数据由 M1～M6 的真实功能产生，不再预置。
 
-| 账号 | 角色 | 说明 |
-|------|------|------|
-| admin | ADMIN | 管理员，可进系统管理、统计、知识库 |
-| agent01 | AGENT | 客服坐席（初始为离线，需在工作台真实上线） |
-| user01 | USER | 普通用户 |
+| 账号 | 角色 | 登录后入口 | 可见范围 |
+|------|------|------------|----------|
+| admin | ADMIN | `/admin/dashboard` | 看板、全部会话/工单、坐席只读、知识库、用户/角色/登录日志 |
+| agent01 | AGENT | `/agent/workbench` | 坐席工作台、我的会话、我的工单、知识库、AI 聊天 |
+| user01 | USER | `/user/home` | 首页、AI 咨询、我的会话、我的工单、知识库、个人资料 |
+
+> 旧路径 `/dashboard`、`/sessions`、`/orders`、`/agents`、`/knowledge`、`/chat`、`/users`、`/roles`、`/login-logs` 会按当前角色重定向到新入口；
+> 跨角色访问（例如 USER 打开 `/admin/users`）会进入 `/403`。
 
 > 如果导入了可选的 `sql/demo/02_demo_data.sql`，会额外出现 agent02、user02、user03 等演示账号，
 > 以及演示用的知识、会话、工单数据；这些都不是真实业务数据。
@@ -135,7 +138,7 @@ smart-customer-service/
 │  ├─ 接口与WebSocket协议.md       # REST + WS 协议规范
 │  └─ screenshots/                # 登录页、看板、AI 聊天页截图
 ├─ frontend/                      # Vue3 + Vite + Element Plus 前端
-│  ├─ src/views/                  # Login / Dashboard / Knowledge / Orders / Sessions / Agents / Users / Chat
+│  └─ views/                      # 三套入口共 19 个路由页面：admin/agent/user + Login/403
 │  ├─ scripts/build.mjs           # 沙箱兼容构建脚本
 │  └─ dist/                       # 构建产物（由 serve-frontend.mjs 托管）
 ├─ src/main/java/com/zhiketong/
@@ -154,7 +157,7 @@ smart-customer-service/
 
 ---
 
-## 5. 已完成（M0 骨架 + M1 系统管理）
+## 5. 已完成（M0 骨架 + M1 系统管理 + M1.5 角色边界）
 
 - [x] Maven 工程、统一依赖版本、Java 8 编译
 - [x] 11 张业务表 DDL + 最小初始化（3 个角色、3 个账号；业务表为空）
@@ -165,10 +168,11 @@ smart-customer-service/
 - [x] DeepSeek 客户端（超时、失败降级、调用日志）
 - [x] WebSocket 握手鉴权、连接管理、心跳、统一消息信封
 - [x] Swagger 在线接口文档
-- [x] 前端 10 个页面：登录、看板、知识库、工单、会话、坐席、用户、角色、登录日志、AI 聊天
-- [x] 控制台只读过渡接口 `/api/console/*`（直接查询 MySQL，M2～M6 正式接口逐步替换）
+- [x] 前端三套入口：`/admin`（8 页）、`/agent`（5 页）、`/user`（6 页），登录按角色落地，跨角色 403
+- [x] 控制台只读过渡接口 `/api/console/*`（按 ADMIN/AGENT 收紧；M2～M6 正式接口逐步替换）
 - [x] **M1 系统管理**：用户分页/新增/编辑/启停/删除/重置密码（`/api/admin/users`）、角色列表（`/api/admin/roles`）、登录日志（`/api/admin/login-logs`）、坐席上线/下线/忙碌（`/api/agent/*`）
-- [x] M1 管理端页面：用户管理（真实 CRUD）、角色管理、登录日志；菜单按角色过滤，越权路由回退看板
+- [x] **M1.5 角色边界**：USER 不能读取全量账号/会话；新增 `/api/user/sessions|orders|profile`（仅本人）、`/api/agent/sessions|orders`（仅本人）
+- [x] M1 管理端页面：用户管理（真实 CRUD）、角色管理、登录日志；AGENT/USER 独立门户布局
 - [x] UI/UX v2：统一设计令牌、键盘焦点、移动端抽屉、触控尺寸、空态/加载态、reduced-motion、表格与图表可读性
 - [x] 可选演示数据集 `sql/demo/02_demo_data.sql`（默认不导入，明确标注非真实业务）
 
@@ -177,6 +181,7 @@ smart-customer-service/
 | 里程碑 | 状态 | 内容 |
 |--------|------|------|
 | M1 | ✅ 已完成 | 用户/角色管理、登录日志、坐席状态 |
+| M1.5 | ✅ 已完成 | 三套角色入口、403、`/api/console` 权限收紧、USER/AGENT 本人数据接口 |
 | M2 | 待开始 | 知识库分类/条目 CRUD、搜索、命中排行 |
 | M3 | 待开始 | 用户会话、消息持久化、知识库匹配 + AI 对话、WebSocket 路由 |
 | M4 | 待开始 | 转人工排队、坐席接入/结束、满意度评价、心跳与负载 |
@@ -184,11 +189,14 @@ smart-customer-service/
 | M6 | 待开始 | 统计看板、管理端完善、用户聊天页 |
 | M7 | 待开始 | 联调、测试、答辩材料 |
 
-### M1 已知限制
+### M1 / M1.5 已知限制
 
 - 角色固定为 `ADMIN/AGENT/USER` 三个内置角色；R-14～R-17 的角色增删改暂未开放，角色列表只读。
 - 禁用/删除用户后，**已签发的 JWT 在过期前仍可访问**（重新登录会被拦截）；后续可增加 Redis 按用户失效表。
 - 坐席心跳、今日服务量、平均评分统计留待 M4 实现；当前 `/api/agent/*` 返回坐席 ID、状态、并发上限/当前负载与累计接待数。
+- AGENT 的坐席工作台仍通过 `/api/console/agents|waiting` 读取坐席列表与队列；按坐席本人收窄留待 M4。
+- USER/AGENT 的“我的会话/我的工单”当前是真实空表上的只读分页，数据要等 M3/M5 产生。
+- 管理端修改角色后，已登录用户需**重新登录**才会刷新菜单/守卫（前端角色取自 localStorage）。
 - 请求级 403 以统一返回体 `code=403` 表达，HTTP 状态可能为 200；前端按 `code` 处理并展示后端 message。
 
 ---

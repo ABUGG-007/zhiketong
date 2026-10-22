@@ -30,6 +30,19 @@ export const agentOffline = () => http.post('/agent/offline')
 export const agentSetStatus = (onlineStatus) =>
   http.put('/agent/status', { onlineStatus })
 
+/* ---------- 坐席端自助数据（M1.5，仅 AGENT 本人） ---------- */
+export const getAgentSessions = (params) =>
+  http.get('/agent/sessions', { params, silent: true })
+export const getAgentOrders = (params) =>
+  http.get('/agent/orders', { params, silent: true })
+
+/* ---------- 用户端自助数据（M1.5，仅 USER 本人） ---------- */
+export const getUserSessions = (params) =>
+  http.get('/user/sessions', { params, silent: true })
+export const getUserOrders = (params) =>
+  http.get('/user/orders', { params, silent: true })
+export const getUserProfile = () => http.get('/user/profile', { silent: true })
+
 /**
  * 控制台只读过渡接口 /api/console/*
  * 直接查询本系统 MySQL 业务表，不返回模拟数据；

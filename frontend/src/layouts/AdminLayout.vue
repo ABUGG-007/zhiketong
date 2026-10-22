@@ -14,7 +14,7 @@
         <div class="brand-logo" aria-hidden="true">智</div>
         <div v-if="!collapsed || mobileOpen" class="brand-text">
           <div class="brand-name">智客通</div>
-          <div class="brand-sub">智能客服工作台</div>
+          <div class="brand-sub">管理控制台</div>
         </div>
         <button
           v-if="mobileOpen"
@@ -46,7 +46,7 @@
               <el-icon class="nav-icon"><component :is="iconOf(item.icon)" /></el-icon>
               <span v-if="!collapsed || mobileOpen" class="nav-text">{{ item.title }}</span>
               <span
-                v-if="(!collapsed || mobileOpen) && item.name === 'sessions' && waitingCount > 0"
+                v-if="(!collapsed || mobileOpen) && item.name === 'admin-sessions' && waitingCount > 0"
                 class="nav-count"
                 :aria-label="`${waitingCount} 个会话等待接入`"
               >
@@ -123,8 +123,8 @@
                 <el-dropdown-item disabled>
                   {{ user?.username }} · {{ roleLabel }}
                 </el-dropdown-item>
-                <el-dropdown-item command="chat" divided>
-                  <el-icon><ChatDotRound /></el-icon> AI 聊天体验
+                <el-dropdown-item command="dashboard" divided>
+                  <el-icon><DataAnalysis /></el-icon> 管理看板
                 </el-dropdown-item>
                 <el-dropdown-item command="logout">
                   <el-icon><SwitchButton /></el-icon> 退出登录
@@ -262,10 +262,11 @@ const waitingCount = ref(0)
 
 const groups = computed(() => {
   const collected = []
-  // 菜单与路由守卫共用 meta.roles：当前角色无权访问的页面不出现在侧栏
+  // 仅收集 /admin/* 子路由；菜单与路由守卫共用 meta.roles
   const roleCode = user.value?.roleCode || ''
   for (const record of router.getRoutes()) {
     const meta = record.meta || {}
+    if (!record.path.startsWith('/admin/')) continue
     if (!meta.group || !meta.title) continue
     if (Array.isArray(meta.roles) && meta.roles.length && !meta.roles.includes(roleCode)) continue
     let group = collected.find((g) => g.name === meta.group)
@@ -302,8 +303,8 @@ function onUserCommand(command) {
     clearAuth()
     ElMessage.success('已安全退出登录')
     router.replace({ name: 'login' })
-  } else if (command === 'chat') {
-    router.push({ name: 'chat' })
+  } else if (command === 'dashboard') {
+    router.push('/admin/dashboard')
   }
 }
 
