@@ -48,6 +48,9 @@ const SHOTS = [
   { file: '11-agent-workbench.png', role: 'agent01', path: '/agent/workbench', wait: 2200 },
   { file: '12-user-home.png', role: 'user01', path: '/user/home', wait: 2000 },
   { file: '13-embed-widget.png', path: '/embed/demo', wait: 2400 },
+  { file: '15-admin-statistics.png', role: 'admin', path: '/admin/statistics', wait: 2400 },
+  { file: '16-admin-alerts.png', role: 'admin', path: '/admin/alerts', wait: 2000 },
+  { file: '17-admin-kb-ops.png', role: 'admin', path: '/admin/kb-ops', wait: 2200 },
   {
     file: '14-mobile-dashboard.png',
     role: 'admin',
