@@ -52,3 +52,6 @@ desktop.ini
 tmp/
 temp/
 *.tmp
+
+# ---------- 智能体会话产物 ----------
+.dsh/

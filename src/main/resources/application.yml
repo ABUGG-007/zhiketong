@@ -1,5 +1,16 @@
 server:
   port: 8080
+  # 接口响应压缩：JSON / 文本超过 2KB 即 gzip，显著降低看板、列表页的传输耗时
+  compression:
+    enabled: true
+    min-response-size: 2048
+    mime-types: application/json,application/javascript,text/html,text/plain,text/css,text/xml,application/xml
+  tomcat:
+    # 默认 200 个请求线程足够；连接线程与请求线程分离，避免上传/慢请求占满工作线程
+    threads:
+      max: 200
+      min-spare: 20
+    accept-count: 200
   servlet:
     context-path: /
     encoding:
@@ -14,8 +25,8 @@ spring:
     active: dev
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    # 本地开发默认连接；生产/答辩环境通过环境变量覆盖
-    url: jdbc:mysql://localhost:3306/zhiketong?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&rewriteBatchedStatements=true
+    # 本地开发默认连接；生产环境必须通过环境变量覆盖
+    url: jdbc:mysql://localhost:3306/zhiketong?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&rewriteBatchedStatements=true&cachePrepStmts=true&prepStmtCacheSize=256&prepStmtCacheSqlLimit=2048&useLocalSessionState=true&useLocalTransactionState=true
     username: ${MYSQL_USERNAME:root}
     password: ${MYSQL_PASSWORD:246790}
     hikari:
@@ -33,7 +44,8 @@ spring:
     port: ${REDIS_PORT:6380}
     password: ${REDIS_PASSWORD:246790}
     database: 0
-    timeout: 3000ms
+    # 命令超时不宜过长：Redis 不可用时鉴权链路降级要快（配合 JwtAuthenticationFilter 的 30 秒熔断）
+    timeout: 1000ms
     lettuce:
       pool:
         max-active: 16
@@ -62,7 +74,9 @@ mybatis-plus:
   type-aliases-package: com.zhiketong.entity
   configuration:
     map-underscore-to-camel-case: true
-    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+    # SQL 日志走 slf4j（logback）而不是直接打印到 stdout：
+    # 默认 info 级别不输出 SQL，需要排查时设 LOG_LEVEL_SQL=debug
+    log-impl: ${MYBATIS_LOG_IMPL:org.apache.ibatis.logging.slf4j.Slf4jImpl}
   global-config:
     banner: false
     db-config:
@@ -75,8 +89,8 @@ mybatis-plus:
 # 业务自定义配置
 zhiketong:
   jwt:
-    # HS256 密钥，长度必须 >= 32 字节
-    secret: ${JWT_SECRET:zhiketong-javaee-final-project-secret-key-2026}
+    # HS256 密钥，长度必须 >= 32 字节；生产环境必须通过 JWT_SECRET 注入，禁止使用仓库默认值
+    secret: ${JWT_SECRET:zhiketong-saas-dev-only-secret-key-override-in-prod}
     expire-hours: ${JWT_EXPIRE_HOURS:2}
     header: Authorization
     prefix: "Bearer "
@@ -97,10 +111,25 @@ zhiketong:
     queue-timeout-minutes: 10
     max-agent-concurrent: 5
     ai-confidence-threshold: 0.60
+    # 连续未命中（降级回复）达到该次数后建议转人工，后端计数下发前端展示
+    fallback-transfer-threshold: 3
+    # 排队中机器人接待（RB-15）：坐席未接入前继续由机器人应答，排队期不计入未命中
+    waiting-bot-enabled: ${WAITING_BOT_ENABLED:true}
     transfer-keywords: 转人工,人工客服,真人,投诉
+  # 网页接入：配置持久化在 tenant_embed_config，控制台「接入方式」页维护
+  embed:
+    # 控制台维护的租户标识，对应 tenant_embed_config.tenant_code
+    tenant-code: ${EMBED_TENANT_CODE:demo}
+    # 浏览器短时令牌有效期（分钟）
+    token-ttl-minutes: ${EMBED_TOKEN_TTL_MINUTES:120}
+    # 服务端签名允许的时间偏差（秒）
+    timestamp-tolerance-seconds: ${EMBED_SIGN_TOLERANCE_SECONDS:300}
+    # 新建租户默认单 IP 每分钟提问上限
+    default-rate-limit-per-minute: 30
   sla:
-    scan-cron: "0 */5 * * * ?"
-    # 首次响应时限（分钟）：P0/P1/P2/P3
+    # SLA 扫描频率：多级时限引擎与历史工单兜底扫描均按此频率执行，默认每分钟一轮
+    scan-cron: "0 * * * * ?"
+    # 首次响应时限（分钟）：P0/P1/P2/P3（历史工单兜底口径，新工单以 order_sla_policy 策略为准）
     first-response-minutes:
       P0: 30
       P1: 120
@@ -112,6 +141,45 @@ zhiketong:
       P1: 480
       P2: 1440
       P3: 4320
+  # 工单规则与自动化引擎（S3-C）
+  rule:
+    # 是否启用规则到期队列扫描任务
+    enabled: ${RULE_ENABLED:true}
+    # 到期队列扫描频率：默认每分钟一轮，取 planned_time 到期的 PENDING 记录执行
+    scan-cron: "${RULE_SCAN_CRON:0 * * * * ?}"
+  # 套餐与用量（S4-B）：套餐额度由 tenant_plan 表驱动，运营期在平台端「租户与套餐」维护
+  tenant:
+    # 租户用量快照聚合频率，默认每日 00:10
+    usage-cron: "${TENANT_USAGE_CRON:0 10 0 * * ?}"
+  # 智能质检（S5-A）：规则与扣分项存 quality_rule，合格线可在此调整
+  quality:
+    # 全量自动质检扫描频率，默认每 10 分钟一轮
+    scan-cron: "${QUALITY_SCAN_CRON:0 */10 * * * ?}"
+    # 质检合格线：记录分数 ≥ 该值判定合格，并作为快照写入 quality_record.pass_score
+    pass-score: ${QUALITY_PASS_SCORE:80}
+  # 运营大屏与实时指标（S6-A）：阈值仅用于内置预警，规则化告警按路线图 S6-B 推进
+  ops:
+    # 大屏 WebSocket 推送间隔（毫秒），0 或 push-enabled=false 时只保留 HTTP 拉取
+    push-enabled: ${OPS_PUSH_ENABLED:true}
+    push-interval-ms: ${OPS_PUSH_INTERVAL_MS:5000}
+    # 排队人数预警阈值
+    waiting-warn-count: ${OPS_WAITING_WARN_COUNT:5}
+    # 最长排队时长预警阈值（秒）
+    waiting-warn-seconds: ${OPS_WAITING_WARN_SECONDS:300}
+    # 首响均值预警阈值（秒）
+    first-response-warn-seconds: ${OPS_FIRST_RESPONSE_WARN_SECONDS:60}
+  # 客户之声 VOC（S6-C，DB-06）：未命中问法聚类、热点话题与词云
+  voc:
+    # 是否启用聚类定时任务，false 时只能手动触发
+    enabled: ${VOC_ENABLED:true}
+    # 聚类频率，默认每 30 分钟一轮
+    cluster-cron: "${VOC_CLUSTER_CRON:0 */30 * * * ?}"
+    # 问法归入主题的相似度阈值（0-1），低于该值新建主题
+    similarity-threshold: ${VOC_SIMILARITY_THRESHOLD:0.5}
+    # 热点话题判定阈值：主题累计提问次数达到该值即为热点
+    hot-ask-threshold: ${VOC_HOT_ASK_THRESHOLD:5}
+    # 单轮聚类最多处理的问法条数，避免一次拉全量导致长事务
+    cluster-batch-size: ${VOC_CLUSTER_BATCH_SIZE:500}
 
 management:
   endpoints:
@@ -125,12 +193,21 @@ management:
 logging:
   level:
     root: info
-    com.zhiketong: debug
+    # 应用日志默认 info；排查问题时可设 LOG_LEVEL_APP=debug
+    com.zhiketong: ${LOG_LEVEL_APP:info}
+    # Mapper SQL 默认不打印；排查慢查询时设 LOG_LEVEL_SQL=debug
+    com.zhiketong.mapper: ${LOG_LEVEL_SQL:info}
     org.springframework.security: info
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
   file:
     name: logs/zhiketong.log
+  # 单文件 100MB 滚动，最多保留 7 天 / 1GB，避免长期运行日志无限膨胀
+  logback:
+    rollingpolicy:
+      max-file-size: 100MB
+      max-history: 7
+      total-size-cap: 1GB
 
 springdoc:
   api-docs:
