@@ -1,0 +1,772 @@
+/* =========================================================
+   智客通 · 动效层 v1（ui-motion）
+   原则：动效只服务于三件事——「我从哪里来」「我按下去有没有反应」
+   「我等的时候看到什么」。不做装饰性动画，不打断阅读。
+
+   读法约定：
+   · 令牌集中在 :root，改时长/曲线只改这里；
+   · 工具类 .zk-* 供页面直接用，页面内不再自造关键帧；
+   · Element Plus 浮层统一在「三、浮层过渡」覆盖，页面不再单独写；
+   · 所有动画只动 transform / opacity，减少动效时降级为 120ms 淡入淡出。
+   ========================================================= */
+
+:root {
+  /* ---------- 时长分级（foundations：小元素 150–250 / 面板 300–450 / 整页 450–600） ---------- */
+  --zk-dur-instant: 90ms; /* 按下反馈：比感知更快 */
+  --zk-dur-fast: 140ms; /* 悬停、状态色变化 */
+  --zk-dur-base: 200ms; /* 图标旋转、勾选 */
+  --zk-dur-slow: 300ms; /* 卡片、气泡入场 */
+  --zk-dur-panel: 380ms; /* 抽屉、面板、弹窗 */
+  --zk-dur-page: 260ms; /* 后台路由切换：比整页转场克制 */
+  --zk-dur-full: 520ms; /* 登录等独立大页 */
+
+  /* ---------- 曲线：进场 ease-out、退场 ease-in、双向 ease-in-out、回弹 ≤8% ---------- */
+  --zk-ease-out: cubic-bezier(0, 0, 0.2, 1);
+  --zk-ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --zk-ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --zk-ease-soft: cubic-bezier(0.2, 0.7, 0.3, 1); /* 骨架块浮现 */
+  --zk-ease-spring: cubic-bezier(0.34, 1.32, 0.64, 1); /* 轻微回弹，超调约 6% */
+  --zk-ease-emphasis: cubic-bezier(0.22, 1, 0.36, 1); /* 面板滑入：先快后慢 */
+
+  /* ---------- 节奏 ---------- */
+  --zk-stagger: 45ms; /* 一组元素依次出场，30–60ms */
+  --zk-reveal-y: 10px; /* 上浮距离：后台列表用 10px，不夸张 */
+
+  /* ---------- Element Plus 时长对齐 ---------- */
+  --el-transition-duration: var(--zk-dur-base);
+  --el-transition-duration-fast: var(--zk-dur-fast);
+}
+
+/* =========================================================
+   一、工具类
+   ========================================================= */
+
+/* 1.1 按下反馈：所有可点元素都有「按下去的形变」 */
+.zk-press {
+  transition: transform var(--zk-dur-instant) var(--zk-ease-in-out);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.zk-press:active {
+  transform: scale(0.97);
+}
+
+/* 1.2 悬停抬起：只给卡片用，且只在有指针的设备上生效 */
+@media (hover: hover) and (pointer: fine) {
+  .zk-hover-lift {
+    transition: transform var(--zk-dur-base) var(--zk-ease-out),
+      box-shadow var(--zk-dur-base) var(--zk-ease-out),
+      border-color var(--zk-dur-base) var(--zk-ease-out);
+  }
+
+  .zk-hover-lift:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--zk-shadow-md);
+  }
+
+  .zk-hover-lift:active {
+    transform: translateY(0) scale(0.995);
+    transition-duration: var(--zk-dur-instant);
+  }
+}
+
+/* 1.3 依次浮现：进场类只播一次，由 v-reveal 指令加 .is-in 触发。
+      用 animation + backwards 填充而不是 transition：
+      · 结束后不再占着 transform，.zk-hover-lift / .zk-press 才能正常接管；
+      · 错开延迟不会残留，元素后续的 hover 过渡不会被永久推迟。 */
+.zk-reveal {
+  opacity: 0;
+}
+
+.zk-reveal.is-in {
+  opacity: 1;
+  animation: zk-reveal-in 480ms var(--zk-ease-spring) backwards;
+  animation-delay: calc(var(--zk-i, 0) * var(--zk-stagger));
+}
+
+@keyframes zk-reveal-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, var(--zk-reveal-y, 10px), 0);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* 1.4 骨架屏：一页共用一道 110° 光带，不是每块各闪各的 */
+.zk-skeleton {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  background: #ededf0;
+  border-radius: var(--zk-radius-xs);
+}
+
+.zk-skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    110deg,
+    transparent 38%,
+    rgba(255, 255, 255, 0.92) 50%,
+    transparent 62%
+  );
+  background-size: 220% 100%;
+  animation: zk-sheen 1.5s linear infinite;
+}
+
+/* 兼容旧类名：老页面里的 .sk-bar 统一走新光带 */
+.sk-bar {
+  position: relative;
+  display: inline-block;
+  width: 56px;
+  height: 20px;
+  overflow: hidden;
+  border-radius: var(--zk-radius-xs);
+  background: #ededf0;
+}
+
+.sk-bar::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    110deg,
+    transparent 38%,
+    rgba(255, 255, 255, 0.92) 50%,
+    transparent 62%
+  );
+  background-size: 220% 100%;
+  animation: zk-sheen 1.5s linear infinite;
+}
+
+.sk-bar.short {
+  width: 120px;
+}
+
+/* 1.5 状态点呼吸：只在「进行中」时用，静止状态不许闪 */
+.zk-dot-live {
+  position: relative;
+}
+
+.zk-dot-live::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  border: 1px solid currentColor;
+  opacity: 0;
+  animation: zk-pulse-ring 1.8s var(--zk-ease-out) infinite;
+}
+
+/* 1.6 数值变化闪一下：用于表格内数字刷新时被看见 */
+.zk-flash {
+  animation: zk-flash 700ms var(--zk-ease-out);
+}
+
+/* =========================================================
+   二、关键帧
+   ========================================================= */
+
+@keyframes zk-sheen {
+  from {
+    background-position: 180% 0;
+  }
+  to {
+    background-position: -80% 0;
+  }
+}
+
+@keyframes zk-rise {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 8px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes zk-rise-sm {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 4px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes zk-pop-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes zk-pulse-ring {
+  0% {
+    opacity: 0.5;
+    transform: scale(0.9);
+  }
+  70% {
+    opacity: 0;
+    transform: scale(1.6);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.6);
+  }
+}
+
+@keyframes zk-dot-bounce {
+  0%,
+  60%,
+  100% {
+    transform: translateY(0) scale(0.9);
+    opacity: 0.55;
+  }
+  30% {
+    transform: translateY(-4px) scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes zk-shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  15% {
+    transform: translateX(-10px);
+  }
+  30% {
+    transform: translateX(10px);
+  }
+  45% {
+    transform: translateX(-6px);
+  }
+  60% {
+    transform: translateX(6px);
+  }
+  75% {
+    transform: translateX(-3px);
+  }
+  90% {
+    transform: translateX(3px);
+  }
+}
+
+@keyframes zk-flash {
+  0% {
+    background-color: rgba(79, 70, 229, 0.14);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
+@keyframes zk-bar-grow {
+  from {
+    transform: scaleY(0);
+  }
+  to {
+    transform: scaleY(1);
+  }
+}
+
+@keyframes zk-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes zk-check-draw {
+  from {
+    stroke-dashoffset: 24;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* 通用入场类：给不便用指令的地方一行搞定 */
+.zk-rise {
+  animation: zk-rise 320ms var(--zk-ease-soft) both;
+}
+
+.zk-pop {
+  animation: zk-pop-in 220ms var(--zk-ease-spring) both;
+}
+
+.zk-shake {
+  animation: zk-shake 400ms cubic-bezier(0.36, 0.07, 0.19, 0.97);
+}
+
+/* =========================================================
+   三、Vue 过渡（页面 / 浮层 / 列表 / 消息）
+   ========================================================= */
+
+/* 3.1 根级与内容区淡入：进场 240ms 上浮 8px，退场 160ms 上移 4px（可逆、路径一致） */
+.zk-fade-enter-active {
+  transition: opacity 240ms var(--zk-ease-out), transform 240ms var(--zk-ease-soft);
+}
+
+.zk-fade-leave-active {
+  transition: opacity 160ms var(--zk-ease-in), transform 160ms var(--zk-ease-in);
+}
+
+.zk-fade-enter-from {
+  opacity: 0;
+  transform: translate3d(0, 8px, 0);
+}
+
+.zk-fade-leave-to {
+  opacity: 0;
+  transform: translate3d(0, -4px, 0);
+}
+
+/* 3.2 后台路由切换：方向统一为「新内容从下轻推入、旧内容向上退」，
+      比整页转场短，避免频繁切页时拖沓。 */
+.zk-page-enter-active {
+  transition: opacity var(--zk-dur-page) var(--zk-ease-out),
+    transform var(--zk-dur-page) var(--zk-ease-emphasis);
+}
+
+.zk-page-leave-active {
+  transition: opacity 140ms var(--zk-ease-in), transform 140ms var(--zk-ease-in);
+}
+
+.zk-page-enter-from {
+  opacity: 0;
+  transform: translate3d(0, 10px, 0);
+}
+
+.zk-page-leave-to {
+  opacity: 0;
+  transform: translate3d(0, -6px, 0);
+}
+
+/* 3.3 浮层：从触发器方向长出来（--zk-pop-origin 由调用方设置） */
+.zk-pop-enter-active {
+  transition: opacity 180ms var(--zk-ease-out), transform 220ms var(--zk-ease-spring);
+  transform-origin: var(--zk-pop-origin, center bottom);
+}
+
+.zk-pop-leave-active {
+  transition: opacity 120ms var(--zk-ease-in), transform 140ms var(--zk-ease-in);
+  transform-origin: var(--zk-pop-origin, center bottom);
+}
+
+.zk-pop-enter-from {
+  opacity: 0;
+  transform: scale(0.96) translateY(-4px);
+}
+
+.zk-pop-leave-to {
+  opacity: 0;
+  transform: scale(0.98);
+}
+
+/* 3.4 列表（transition-group）：逐条插入，不动已有项的位置 */
+.zk-list-enter-active {
+  transition: opacity 260ms var(--zk-ease-soft), transform 280ms var(--zk-ease-spring);
+}
+
+.zk-list-leave-active {
+  transition: opacity 140ms var(--zk-ease-in), transform 140ms var(--zk-ease-in);
+}
+
+.zk-list-enter-from {
+  opacity: 0;
+  transform: translate3d(0, 10px, 0);
+}
+
+.zk-list-leave-to {
+  opacity: 0;
+  transform: translate3d(0, -6px, 0);
+}
+
+.zk-list-move {
+  transition: transform 260ms var(--zk-ease-emphasis);
+}
+
+/* 3.5 聊天气泡：用户从右下、机器人从左下长出来，跟来源一致 */
+.zk-msg-enter-active {
+  transition: opacity 220ms var(--zk-ease-out), transform 280ms var(--zk-ease-spring);
+}
+
+.zk-msg-leave-active {
+  transition: opacity 140ms var(--zk-ease-in), transform 140ms var(--zk-ease-in);
+}
+
+.zk-msg-enter-from {
+  opacity: 0;
+  transform: translate3d(0, 10px, 0) scale(0.97);
+}
+
+.zk-msg-leave-to {
+  opacity: 0;
+  transform: translate3d(0, -4px, 0) scale(0.98);
+}
+
+.zk-msg-enter-from.is-user {
+  transform: translate3d(12px, 10px, 0) scale(0.97);
+}
+
+.zk-msg-enter-from.is-peer {
+  transform: translate3d(-12px, 10px, 0) scale(0.97);
+}
+
+.zk-msg-move {
+  transition: transform 240ms var(--zk-ease-emphasis);
+}
+
+/* 3.6 抽屉内容错层：标题—说明—分区依次进场 */
+.zk-drawer-stagger > * {
+  opacity: 0;
+  animation: zk-rise-sm 320ms var(--zk-ease-soft) both;
+}
+
+.zk-drawer-stagger > *:nth-child(1) {
+  animation-delay: 40ms;
+}
+.zk-drawer-stagger > *:nth-child(2) {
+  animation-delay: 80ms;
+}
+.zk-drawer-stagger > *:nth-child(3) {
+  animation-delay: 120ms;
+}
+.zk-drawer-stagger > *:nth-child(4) {
+  animation-delay: 160ms;
+}
+.zk-drawer-stagger > *:nth-child(5) {
+  animation-delay: 200ms;
+}
+.zk-drawer-stagger > *:nth-child(n + 6) {
+  animation-delay: 240ms;
+}
+
+/* =========================================================
+   四、Element Plus 统一过渡
+   ---------------------------------------------------------
+   EP 自带的 dialog 是「从 -20px 掉下来」、drawer 是 all 过渡、
+   popper 是 scaleY(0)（像被压扁），这里统一换成更有物理感的方案。
+   ========================================================= */
+
+/* 4.1 弹窗：遮罩淡入 200ms，对话框 260ms 从 0.96 长出来并落位 */
+.dialog-fade-enter-active {
+  animation: zk-modal-in 200ms var(--zk-ease-out) both;
+}
+
+.dialog-fade-leave-active {
+  animation: zk-modal-out 160ms var(--zk-ease-in) both;
+}
+
+.dialog-fade-enter-active .el-overlay-dialog {
+  animation: zk-dialog-in 260ms var(--zk-ease-emphasis) both;
+}
+
+.dialog-fade-leave-active .el-overlay-dialog {
+  animation: zk-dialog-out 160ms var(--zk-ease-in) both;
+}
+
+@keyframes zk-modal-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes zk-modal-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes zk-dialog-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 8px, 0) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes zk-dialog-out {
+  from {
+    opacity: 1;
+    transform: none;
+  }
+  to {
+    opacity: 0;
+    transform: translate3d(0, 4px, 0) scale(0.98);
+  }
+}
+
+/* 4.2 抽屉：面板 320ms 滑入（先快后慢），遮罩独立淡入，关闭时路径一致 */
+.el-drawer-fade-enter-active,
+.el-drawer-fade-leave-active {
+  transition: background-color 240ms var(--zk-ease-out) !important;
+}
+
+.el-drawer-fade-enter-active .el-drawer,
+.el-drawer-fade-leave-active .el-drawer {
+  transition: transform 320ms var(--zk-ease-emphasis) !important;
+  will-change: transform;
+}
+
+.el-drawer-fade-leave-active .el-drawer {
+  transition-duration: 220ms !important;
+  transition-timing-function: var(--zk-ease-in) !important;
+}
+
+/* 4.3 提示条（ElMessage）：从上方滑入带轻微回弹，连发多条时原地更新不堆叠 */
+.el-message {
+  transition: opacity 200ms var(--zk-ease-out), transform 260ms var(--zk-ease-spring),
+    top 260ms var(--zk-ease-emphasis) !important;
+}
+
+.el-message-fade-enter-from,
+.el-message-fade-leave-to {
+  opacity: 0;
+  transform: translate3d(0, -12px, 0) scale(0.98) !important;
+}
+
+/* 4.4 下拉 / 选择器浮层：不再被压扁，改为轻微位移 + 缩放 */
+.el-zoom-in-top-enter-active,
+.el-zoom-in-top-leave-active {
+  transition: opacity 160ms var(--zk-ease-out), transform 180ms var(--zk-ease-out) !important;
+    transform-origin: top center;
+}
+
+.el-zoom-in-top-enter-from,
+.el-zoom-in-top-leave-active {
+  opacity: 0;
+  transform: translateY(-4px) scale(0.98) !important;
+}
+
+/* 4.5 开关：圆点滑到位时横向拉长再回弹（果冻手感），底色同步过渡 */
+.el-switch__core {
+  transition: background-color 260ms var(--zk-ease-out),
+    border-color 260ms var(--zk-ease-out) !important;
+}
+
+.el-switch__core .el-switch__action {
+  transition: left 320ms var(--zk-ease-spring), margin-left 320ms var(--zk-ease-spring),
+    transform 320ms var(--zk-ease-out) !important;
+}
+
+.el-switch.is-checked .el-switch__core .el-switch__action {
+  transform: scale(1.04);
+}
+
+.el-switch:active .el-switch__core .el-switch__action {
+  transform: scaleX(1.25) scaleY(0.94);
+  transition-duration: var(--zk-dur-instant) !important;
+}
+
+/* 4.6 按钮：按下形变替代原来的 0.5px 位移；禁用态不响应 */
+.el-button {
+  transition: background-color var(--zk-dur-fast) var(--zk-ease-out),
+    border-color var(--zk-dur-fast) var(--zk-ease-out),
+    color var(--zk-dur-fast) var(--zk-ease-out),
+    box-shadow var(--zk-dur-fast) var(--zk-ease-out),
+    transform var(--zk-dur-instant) var(--zk-ease-in-out) !important;
+}
+
+.el-button:active:not(.is-disabled):not(.is-link):not(.is-text) {
+  transform: scale(0.97);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .el-button:not(.is-disabled):not(.is-link):not(.is-text):hover {
+    transform: translateY(-1px);
+  }
+}
+
+/* 4.7 表格行：悬停底色过渡，避免整行瞬变 */
+.zk-card .el-table__body tr.el-table__row > td.el-table__cell {
+  transition: background-color var(--zk-dur-fast) var(--zk-ease-out);
+}
+
+/* 4.8 输入框：聚焦时主色线从中间向两边亮起（box-shadow 过渡不触发重排） */
+.el-input__wrapper,
+.el-textarea__inner,
+.el-select__wrapper {
+  transition: box-shadow var(--zk-dur-base) var(--zk-ease-out) !important;
+}
+
+/* 4.9 标签页与分页：指示条滑动、页码按下有反馈 */
+.el-tabs__active-bar {
+  transition: transform var(--zk-dur-slow) var(--zk-ease-emphasis),
+    width var(--zk-dur-slow) var(--zk-ease-emphasis) !important;
+}
+
+.el-pagination .el-pager li,
+.el-pagination button {
+  transition: background-color var(--zk-dur-fast) var(--zk-ease-out),
+    color var(--zk-dur-fast) var(--zk-ease-out),
+    transform var(--zk-dur-instant) var(--zk-ease-in-out) !important;
+}
+
+.el-pagination .el-pager li:active {
+  transform: scale(0.94);
+}
+
+/* 4.10 折叠与加载遮罩 */
+.el-loading-mask {
+  transition: opacity var(--zk-dur-base) var(--zk-ease-out);
+}
+
+.el-collapse-item__wrap,
+.el-collapse-item__header {
+  transition: height var(--zk-dur-slow) var(--zk-ease-emphasis),
+    border-color var(--zk-dur-base) var(--zk-ease-out) !important;
+}
+
+.el-checkbox__inner,
+.el-radio__inner {
+  transition: background-color var(--zk-dur-fast) var(--zk-ease-out),
+    border-color var(--zk-dur-fast) var(--zk-ease-out),
+    transform var(--zk-dur-fast) var(--zk-ease-spring) !important;
+}
+
+.el-checkbox.is-checked .el-checkbox__inner,
+.el-radio.is-checked .el-radio__inner {
+  transform: scale(1.04);
+}
+
+/* 4.11 评分：点亮时弹一下（只在选中变化时由 .is-bumped 触发） */
+.el-rate__item .el-rate__icon {
+  transition: transform var(--zk-dur-base) var(--zk-ease-spring),
+    color var(--zk-dur-fast) var(--zk-ease-out) !important;
+}
+
+.el-rate__item.is-bumped .el-rate__icon {
+  transform: scale(1.25);
+}
+
+/* 4.12 进度条：数值变化平滑推进 */
+.el-progress-bar__inner {
+  transition: width var(--zk-dur-slow) var(--zk-ease-emphasis) !important;
+}
+
+/* =========================================================
+   五、页面级通用细节
+   ========================================================= */
+
+/* 5.1 卡片按下态：只在可交互卡片上生效 */
+.zk-card--interactive {
+  transition: border-color var(--zk-dur-base) var(--zk-ease-out),
+    box-shadow var(--zk-dur-base) var(--zk-ease-out),
+    transform var(--zk-dur-base) var(--zk-ease-out);
+}
+
+/* 5.2 表格首屏：数据到了整块淡入，行不动（表格不逐行播，避免扫读被打断） */
+.zk-table-fade-in {
+  animation: zk-rise-sm 260ms var(--zk-ease-soft) both;
+}
+
+/* 5.3 空状态：图标—标题—说明—按钮依次出现（由 ZkEmpty 统一输出） */
+.zk-empty-stack > * {
+  animation: zk-rise-sm 300ms var(--zk-ease-soft) both;
+}
+
+.zk-empty-stack > *:nth-child(1) {
+  animation-delay: 0ms;
+}
+.zk-empty-stack > *:nth-child(2) {
+  animation-delay: 50ms;
+}
+.zk-empty-stack > *:nth-child(3) {
+  animation-delay: 100ms;
+}
+.zk-empty-stack > *:nth-child(4) {
+  animation-delay: 140ms;
+}
+
+/* 5.4 代码 / 单号 / 时间的复制反馈（Copy → Copied） */
+.zk-copy-flash {
+  animation: zk-flash 600ms var(--zk-ease-out);
+}
+
+/* =========================================================
+   六、无障碍：减少动效
+   ---------------------------------------------------------
+   保留「信息」（对勾、错误文字、颜色），去掉「位移与弹跳」，
+   统一降级为 120ms 以内的淡入淡出（ui-motion 底线要求）。
+   ========================================================= */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-delay: 0ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 120ms !important;
+    transition-delay: 0ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .zk-reveal {
+    opacity: 1;
+    transform: none;
+  }
+
+  .zk-skeleton::after,
+  .sk-bar::after {
+    animation: none !important;
+  }
+
+  .zk-fade-enter-from,
+  .zk-fade-leave-to,
+  .zk-page-enter-from,
+  .zk-page-leave-to,
+  .zk-pop-enter-from,
+  .zk-pop-leave-to,
+  .zk-list-enter-from,
+  .zk-list-leave-to,
+  .zk-msg-enter-from,
+  .zk-msg-leave-to {
+    transform: none !important;
+  }
+
+  .el-drawer-fade-enter-active .el-drawer,
+  .el-drawer-fade-leave-active .el-drawer,
+  .dialog-fade-enter-active .el-overlay-dialog,
+  .dialog-fade-leave-active .el-overlay-dialog {
+    animation: none !important;
+    transition: none !important;
+  }
+
+  .zk-dot-live::after {
+    animation: none !important;
+    opacity: 0 !important;
+  }
+
+  .zk-shake,
+  .el-button:active,
+  .zk-press:active,
+  .zk-hover-lift:hover {
+    animation: none !important;
+    transform: none !important;
+  }
+}

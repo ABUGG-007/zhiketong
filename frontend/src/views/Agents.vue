@@ -1,7 +1,6 @@
 <template>
   <div class="zk-page">
     <PageHeader
-      eyebrow="AGENT DESK"
       title="坐席工作台"
       description="坐席在线状态、并发负载与等待接入队列。等待时长每秒刷新，队列每 30 秒自动拉取一次。"
     >
@@ -24,6 +23,7 @@
           <StatusPill
             :label="dictLabel(AGENT_STATUS_DICT, myStatus)"
             :tone="dictTone(AGENT_STATUS_DICT, myStatus)"
+            :live="isOnline"
             dot
           />
           <span v-if="!myAgent" class="my-hint">尚未建档，点击「上线」创建坐席状态</span>
@@ -35,6 +35,20 @@
           </span>
           <span v-if="myAgent">累计接待 <b class="zk-num">{{ myAgent.totalServed ?? 0 }}</b></span>
           <span>最近心跳 {{ formatDateTime(myAgent?.lastHeartbeat) }}</span>
+        </div>
+        <div v-if="mySkillGroupsReady" class="my-skills">
+          <span class="my-label">我的技能组</span>
+          <template v-if="mySkillGroups.length">
+            <el-tag
+              v-for="group in mySkillGroups"
+              :key="group.id"
+              size="small"
+              effect="plain"
+            >
+              {{ group.name }}
+            </el-tag>
+          </template>
+          <span v-else class="my-hint">尚未加入技能组，仅参与「不限技能组」的自动分配</span>
         </div>
       </div>
       <div class="my-actions">
@@ -103,7 +117,7 @@
       </div>
       <div class="summary-item">
         <span class="summary-label">当前排队用户</span>
-        <span class="summary-value zk-num">{{ waiting.length }}</span>
+        <span class="summary-value zk-num">{{ queueSize }}</span>
       </div>
       <div class="summary-desc">
         负载 = 当前接待中会话数 / 坐席最大并发数，达到 90% 标红提示需要扩容。
@@ -117,80 +131,83 @@
       aria-label="坐席状态列表"
       :aria-busy="loading ? 'true' : 'false'"
     >
-      <article
-        v-for="agent in agents"
-        :key="agent.agentId"
-        class="agent-tile"
-        :class="{ 'is-self': isSelfAgent(agent) }"
-        role="listitem"
-      >
-        <div class="tile-head">
-          <div class="tile-avatar" :class="statusTone(agent.onlineStatus)" aria-hidden="true">
-            {{ (agent.nickname || '坐').slice(0, 1) }}
-          </div>
-          <div class="tile-id">
-            <div class="tile-name">
-              {{ agent.nickname || `坐席 ${agent.agentId}` }}
-              <span v-if="isSelfAgent(agent)" class="tile-self">我</span>
+      <ZkSkeleton v-if="!agentsLoaded" variant="card" :rows="2" class="agent-skeleton" />
+      <template v-else>
+        <article
+          v-for="(agent, index) in agents"
+          :key="agent.agentId"
+          v-reveal="{ index: revealIndex(index) }"
+          class="agent-tile zk-hover-lift zk-press"
+          :class="{ 'is-self': isSelfAgent(agent) }"
+          role="listitem"
+        >
+          <div class="tile-head">
+            <div class="tile-avatar" :class="statusTone(agent.onlineStatus)" aria-hidden="true">
+              {{ (agent.agentName || '坐').slice(0, 1) }}
             </div>
-            <div class="tile-sub">坐席 ID · {{ agent.agentId }}</div>
-          </div>
-          <StatusPill
-            :label="dictLabel(AGENT_STATUS_DICT, agent.onlineStatus)"
-            :tone="dictTone(AGENT_STATUS_DICT, agent.onlineStatus)"
-            dot
-          />
-        </div>
-
-        <div class="load-block">
-          <div class="load-head">
-            <span class="load-label">并发负载</span>
-            <span class="load-value zk-num">
-              {{ agent.currentCount ?? 0 }}<span class="load-max">/{{ agent.maxConcurrent ?? 0 }}</span>
-            </span>
-          </div>
-          <div
-            class="tile-track"
-            role="progressbar"
-            :aria-valuenow="Number(agent.currentCount) || 0"
-            aria-valuemin="0"
-            :aria-valuemax="Math.max(Number(agent.maxConcurrent) || 0, 1)"
-            :aria-label="`${agent.nickname || '坐席'} 并发负载`"
-          >
-            <span
-              class="tile-fill"
-              :class="loadTone(agent.currentCount, agent.maxConcurrent)"
-              :style="{ width: `${percent(agent.currentCount, agent.maxConcurrent)}%` }"
-              aria-hidden="true"
+            <div class="tile-id">
+              <div class="tile-name">
+                {{ agent.agentName || `坐席 ${agent.agentId}` }}
+                <span v-if="isSelfAgent(agent)" class="tile-self">我</span>
+              </div>
+              <div class="tile-sub">坐席 ID · {{ agent.agentId }}</div>
+            </div>
+            <StatusPill
+              :label="dictLabel(AGENT_STATUS_DICT, agent.onlineStatus)"
+              :tone="dictTone(AGENT_STATUS_DICT, agent.onlineStatus)"
+              :live="agent.onlineStatus === 'ONLINE' || agent.onlineStatus === 'BUSY'"
+              dot
             />
           </div>
-          <div class="load-foot">
-            <span>负载率 {{ percent(agent.currentCount, agent.maxConcurrent) }}%</span>
-            <span class="muted">累计接待 {{ agent.totalServed ?? 0 }}</span>
-          </div>
-        </div>
 
-        <div class="tile-foot">
-          <span
-            class="heartbeat-dot"
-            :class="agent.onlineStatus === 'OFFLINE' ? 'off' : 'on'"
-            aria-hidden="true"
-          />
-          最近心跳 {{ formatDateTime(agent.lastHeartbeat) }}
-        </div>
-      </article>
-
-      <div v-if="!agents.length" class="agent-empty zk-card">
-        <div class="table-empty">
-          <div class="empty-icon" aria-hidden="true">
-            <el-icon><Headset /></el-icon>
+          <div class="load-block">
+            <div class="load-head">
+              <span class="load-label">并发负载</span>
+              <span class="load-value zk-num">
+                <LoadCount :value="Number(agent.currentCount) || 0" /><span class="load-max">/{{ agent.maxConcurrent ?? 0 }}</span>
+              </span>
+            </div>
+            <div
+              class="tile-track"
+              role="progressbar"
+              :aria-valuenow="Number(agent.currentCount) || 0"
+              aria-valuemin="0"
+              :aria-valuemax="Math.max(Number(agent.maxConcurrent) || 0, 1)"
+              :aria-label="`${agent.agentName || '坐席'} 并发负载`"
+            >
+              <span
+                class="tile-fill"
+                :class="loadTone(agent.currentCount, agent.maxConcurrent)"
+                :style="{ width: `${percent(agent.currentCount, agent.maxConcurrent)}%` }"
+                aria-hidden="true"
+              />
+            </div>
+            <div class="load-foot">
+              <span>负载率 {{ percent(agent.currentCount, agent.maxConcurrent) }}%</span>
+              <span class="muted">累计接待 {{ agent.totalServed ?? 0 }}</span>
+            </div>
           </div>
-          <p>{{ agentsError || '暂无坐席数据' }}</p>
-          <span v-if="agentsError" class="empty-hint">请确认后端 /api/console/agents 已就绪</span>
-          <span v-else class="empty-hint">还没有坐席上线</span>
+
+          <div class="tile-foot">
+            <span
+              class="heartbeat-dot"
+              :class="agent.onlineStatus === 'OFFLINE' ? 'off' : 'on zk-dot-live'"
+              aria-hidden="true"
+            />
+            最近心跳 {{ formatDateTime(agent.lastHeartbeat) }}
+          </div>
+        </article>
+      </template>
+
+      <div v-if="agentsLoaded && !agents.length" class="agent-empty zk-card">
+        <ZkEmpty
+          size="sm"
+          :title="agentsError || '暂无坐席数据'"
+          :hint="agentsError ? '加载失败，请稍后重试' : '还没有坐席上线'"
+        >
           <el-button v-if="agentsError" @click="loadAgents">重新加载</el-button>
           <el-button v-else @click="loadAgents">刷新列表</el-button>
-        </div>
+        </ZkEmpty>
       </div>
     </section>
 
@@ -199,11 +216,11 @@
       <div class="zk-card-head">
         <div>
           <div id="queue-title" class="zk-card-title">等待接入队列</div>
-          <div class="zk-card-desc">按进入排队时间先后排序，waitSeconds 每秒递增</div>
+          <div class="zk-card-desc">按进入排队时间先后排序，等待时长实时刷新</div>
         </div>
         <div class="queue-head-right">
-          <span class="queue-live"><i aria-hidden="true" />实时</span>
-          <span class="queue-count zk-num" aria-live="polite">{{ waiting.length }} 人等待</span>
+          <span class="queue-live"><i class="zk-dot-live" aria-hidden="true" />实时</span>
+          <span class="queue-count zk-num" aria-live="polite">{{ queueSize }} 人等待</span>
         </div>
       </div>
 
@@ -214,11 +231,13 @@
         tabindex="0"
         :aria-busy="queueLoading ? 'true' : 'false'"
       >
+        <ZkSkeleton v-if="!queueLoaded" variant="table" :rows="4" :cols="5" class="table-skeleton" />
         <el-table
+          v-else
           v-loading="queueLoading"
           :data="waiting"
           aria-label="坐席等待接入队列"
-          empty-text="当前没有等待接入的用户"
+          :class="queueFadeClass"
         >
           <el-table-column label="会话号" width="150">
             <template #default="{ row }">
@@ -244,26 +263,32 @@
             </template>
           </el-table-column>
           <el-table-column label="操作" min-width="140">
-            <template #default>
-              <el-tooltip content="接入会话功能将在 M4 里程碑开放" placement="top">
+            <template #default="{ row }">
+              <el-tooltip :content="isAgent ? '接入该会话并开始人工接待' : '仅坐席可接入会话'" placement="top">
                 <span class="btn-wrap">
-                  <el-button type="primary" plain disabled>接入会话</el-button>
+                  <el-button
+                    type="primary"
+                    plain
+                    :loading="accepting === row.sessionId"
+                    :disabled="Boolean(accepting) || !isAgent"
+                    @click.stop="handleAccept(row)"
+                  >
+                    接入会话
+                  </el-button>
                 </span>
               </el-tooltip>
             </template>
           </el-table-column>
 
           <template #empty>
-            <div class="table-empty">
-              <div class="empty-icon" aria-hidden="true">
-                <el-icon><Timer /></el-icon>
-              </div>
-              <p>{{ queueError || '当前没有等待接入的用户' }}</p>
-              <span v-if="queueError" class="empty-hint">请确认后端 /api/console/waiting 已就绪</span>
-              <span v-else class="empty-hint">AI 无法解决时会自动进入该队列</span>
+            <ZkEmpty
+              size="sm"
+              :title="queueError || '当前没有等待接入的用户'"
+              :hint="queueError ? '队列加载失败，请稍后重试' : 'AI 无法解决时会自动进入该队列'"
+            >
               <el-button v-if="queueError" @click="loadWaiting()">重新加载</el-button>
               <el-button v-else @click="loadWaiting()">刷新队列</el-button>
-            </div>
+            </ZkEmpty>
           </template>
         </el-table>
       </div>
@@ -271,18 +296,24 @@
 
     <div class="page-tip">
       <i aria-hidden="true" />
-      数据来源 GET /api/console/agents、GET /api/console/waiting · 接入/挂起等写操作后续里程碑完善
+      坐席上线后才能接收排队会话；接入后会话进入「我的会话」，访客端会收到坐席已接入提示
     </div>
+
+    <SessionDrawer
+      v-model="drawerVisible"
+      :session-id="activeSessionId"
+      role="AGENT"
+      @changed="reload"
+    />
   </div>
 </template>
 
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, defineComponent, h, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import {
   CircleCheck,
   Coffee,
-  Headset,
   Refresh,
   SwitchButton,
   Timer,
@@ -290,7 +321,19 @@ import {
 } from '@element-plus/icons-vue'
 import PageHeader from '@/components/PageHeader.vue'
 import StatusPill from '@/components/StatusPill.vue'
-import { agentOffline, agentOnline, agentSetStatus, getAgents, getWaitingQueue } from '@/api'
+import SessionDrawer from '@/components/SessionDrawer.vue'
+import ZkSkeleton from '@/components/ZkSkeleton.vue'
+import ZkEmpty from '@/components/ZkEmpty.vue'
+import { useCountUp } from '@/composables/motion'
+import {
+  acceptAgentSession,
+  agentOffline,
+  agentOnline,
+  agentSetStatus,
+  getAgentList,
+  getAgentQueue,
+  getMySkillGroups
+} from '@/api'
 import { getUser } from '@/api/http'
 import {
   AGENT_STATUS_DICT,
@@ -306,10 +349,40 @@ const currentUser = getUser()
 
 const agents = ref([])
 const waiting = ref([])
+const queueSize = ref(0)
+const accepting = ref(null)
+const drawerVisible = ref(false)
+const activeSessionId = ref(null)
 const loading = ref(false)
 const queueLoading = ref(false)
+const agentsLoaded = ref(false)
+const queueLoaded = ref(false)
 const agentsError = ref('')
 const queueError = ref('')
+
+/** 卡片入场错开序号：超过 4 张后不再继续累加，保证最晚一张入场仍 ≤ 700ms */
+const revealIndex = (index) => Math.min(index, 4)
+
+/* 卡片内负载数字滚动：v-for 里无法直接调用组合式，用局部组件包一层 */
+const LoadCount = defineComponent({
+  props: { value: { type: Number, default: 0 } },
+  setup(props) {
+    const source = computed(() => props.value)
+    const { display } = useCountUp(source, {
+      duration: 600,
+      updateDuration: 420,
+      separator: false
+    })
+    return () => h('span', display.value)
+  }
+})
+
+// 队列刷新后重播 160ms 淡入（只淡不位移）
+const queueTick = ref(0)
+watch(waiting, () => {
+  queueTick.value += 1
+})
+const queueFadeClass = computed(() => (queueTick.value % 2 ? 'list-fade-a' : 'list-fade-b'))
 
 /* ---------- 当前登录坐席状态 ---------- */
 const isAgent = computed(() => currentUser?.roleCode === 'AGENT')
@@ -324,6 +397,10 @@ const myStatus = computed(() => myAgent.value?.onlineStatus || 'OFFLINE')
 const isOnline = computed(() => myStatus.value === 'ONLINE' || myStatus.value === 'BUSY')
 const statusBusy = ref('')
 const isSelfAgent = (agent) => Number(agent?.agentId) === Number(currentUser?.id)
+
+/** 我的技能组：决定自己能接到哪些咨询类型，加载成功后才展示，避免失败时误报「未加入」 */
+const mySkillGroups = ref([])
+const mySkillGroupsReady = ref(false)
 
 const fetchedAt = ref(Date.now())
 const nowTick = ref(Date.now())
@@ -389,41 +466,75 @@ async function handleAgentAction(action) {
 async function loadAgents() {
   loading.value = true
   try {
-    const data = await getAgents()
+    const data = await getAgentList()
     agents.value = Array.isArray(data) ? data : []
     agentsError.value = ''
   } catch (error) {
     agents.value = []
     agentsError.value =
       error?.response?.status === 404
-        ? '接口返回 404：/api/console/agents 尚未部署'
+        ? '坐席数据加载失败，请稍后重试'
         : error?.message || '坐席数据加载失败'
   } finally {
     loading.value = false
+    agentsLoaded.value = true
   }
 }
 
 async function loadWaiting(silent = false) {
   queueLoading.value = !silent
   try {
-    const data = await getWaitingQueue()
-    waiting.value = Array.isArray(data) ? data : []
+    const data = await getAgentQueue({ pageNum: 1, pageSize: 100 })
+    waiting.value = Array.isArray(data?.list) ? data.list : []
+    queueSize.value = Number(data?.queueSize ?? waiting.value.length) || 0
     fetchedAt.value = Date.now()
     queueError.value = ''
   } catch (error) {
     waiting.value = []
+    queueSize.value = 0
     queueError.value =
       error?.response?.status === 404
-        ? '接口返回 404：/api/console/waiting 尚未部署'
+        ? '等待队列加载失败，请稍后重试'
         : error?.message || '等待队列加载失败'
   } finally {
     queueLoading.value = false
+    queueLoaded.value = true
+  }
+}
+
+/** 接入排队会话：成功后直接打开对话抽屉，减少一步跳转；并刷新坐席负载与队列 */
+async function handleAccept(row) {
+  if (!isAgent.value || accepting.value) return
+  accepting.value = row.sessionId
+  try {
+    await acceptAgentSession(row.sessionId)
+    ElMessage.success(`已接入会话 ${row.sessionNo}，可直接回复`)
+    activeSessionId.value = row.sessionId
+    drawerVisible.value = true
+    await Promise.all([loadAgents(), loadWaiting(true)])
+  } catch {
+    // 409 等业务错误已由 http 拦截器展示后端 message
+  } finally {
+    accepting.value = null
+  }
+}
+
+async function loadMySkillGroups() {
+  if (!isAgent.value) return
+  try {
+    const data = await getMySkillGroups()
+    mySkillGroups.value = Array.isArray(data) ? data : []
+    mySkillGroupsReady.value = true
+  } catch {
+    // 技能组信息为辅助信息，加载失败不影响工作台主流程
+    mySkillGroupsReady.value = false
   }
 }
 
 function reload() {
   loadAgents()
   loadWaiting()
+  loadMySkillGroups()
 }
 
 onMounted(() => {
@@ -444,6 +555,46 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
+/* 首屏骨架占位：卡片与队列各自与真实内容同尺寸，加载前后不跳 */
+.agent-skeleton {
+  grid-column: 1 / -1;
+  padding: 16px 18px;
+  border: 1px solid var(--zk-border);
+  border-radius: var(--zk-radius-lg);
+  background: var(--zk-surface);
+}
+
+.table-skeleton {
+  padding: 12px 14px;
+}
+
+/* 队列刷新 / 筛选后淡入 160ms：只淡不位移 */
+.list-fade-a {
+  animation: zk-fade-a 160ms var(--zk-ease-out);
+}
+
+.list-fade-b {
+  animation: zk-fade-b 160ms var(--zk-ease-out);
+}
+
+@keyframes zk-fade-a {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes zk-fade-b {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
 /* 概览条 */
 .agent-summary {
   display: flex;
@@ -455,7 +606,6 @@ onBeforeUnmount(() => {
   background: var(--zk-surface);
   border: 1px solid var(--zk-border);
   border-radius: var(--zk-radius-lg);
-  box-shadow: var(--zk-shadow-sm);
 }
 
 .summary-item {
@@ -542,6 +692,13 @@ onBeforeUnmount(() => {
   font-weight: 650;
 }
 
+.my-skills {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 .my-actions {
   display: flex;
   align-items: center;
@@ -566,19 +723,14 @@ onBeforeUnmount(() => {
   background: var(--zk-surface);
   border: 1px solid var(--zk-border);
   border-radius: var(--zk-radius-lg);
-  box-shadow: var(--zk-shadow-sm);
   padding: 18px;
   display: flex;
   flex-direction: column;
   gap: 16px;
-  transition: transform var(--zk-dur-base) var(--zk-ease-out),
-    box-shadow var(--zk-dur-base) var(--zk-ease-out),
-    border-color var(--zk-dur-base) var(--zk-ease-out);
+  transition: border-color var(--zk-dur-base) var(--zk-ease-out);
 }
 
 .agent-tile:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--zk-shadow-md);
   border-color: var(--zk-border-strong);
 }
 
@@ -592,7 +744,7 @@ onBeforeUnmount(() => {
   width: 40px;
   height: 40px;
   flex: 0 0 40px;
-  border-radius: 12px;
+  border-radius: var(--zk-radius);
   display: grid;
   place-items: center;
   font-size: 15px;
@@ -642,7 +794,7 @@ onBeforeUnmount(() => {
 .load-block {
   background: var(--zk-surface-2);
   border: 1px solid var(--zk-border);
-  border-radius: 12px;
+  border-radius: var(--zk-radius-lg);
   padding: 12px 14px;
 }
 
@@ -671,29 +823,29 @@ onBeforeUnmount(() => {
 
 .tile-track {
   margin-top: 9px;
-  height: 6px;
-  border-radius: 999px;
-  background: var(--zk-border);
+  height: 4px;
+  border-radius: var(--zk-radius-xs);
+  background: #ececef;
   overflow: hidden;
 }
 
 .tile-fill {
   display: block;
   height: 100%;
-  border-radius: 999px;
+  border-radius: var(--zk-radius-xs);
   transition: width var(--zk-dur-slow) var(--zk-ease-out);
 }
 
 .tile-fill.calm {
-  background: linear-gradient(90deg, #2dd4bf, var(--zk-teal));
+  background: var(--zk-green);
 }
 
 .tile-fill.warm {
-  background: linear-gradient(90deg, #fbbf24, var(--zk-amber));
+  background: var(--zk-amber-edge);
 }
 
 .tile-fill.hot {
-  background: linear-gradient(90deg, #fb7185, var(--zk-red));
+  background: var(--zk-red-edge);
 }
 
 .load-foot {
@@ -728,8 +880,8 @@ onBeforeUnmount(() => {
 }
 
 .heartbeat-dot.on {
-  background: var(--zk-teal);
-  box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.14);
+  background: #10b981;
+  color: #10b981;
 }
 
 .heartbeat-dot.off {
@@ -737,8 +889,7 @@ onBeforeUnmount(() => {
 }
 
 .agent-tile.is-self {
-  border-color: var(--zk-teal-line);
-  box-shadow: 0 0 0 1px rgba(20, 184, 166, 0.14), var(--zk-shadow-sm);
+  border-color: var(--zk-accent-line);
 }
 
 .agent-empty {
@@ -769,25 +920,16 @@ onBeforeUnmount(() => {
   color: var(--zk-teal-deep);
   background: var(--zk-teal-soft);
   border: 1px solid var(--zk-teal-line);
-  border-radius: 999px;
+  border-radius: var(--zk-radius-sm);
 }
 
 .queue-live i {
+  position: relative;
   width: 5px;
   height: 5px;
   border-radius: 50%;
+  color: var(--zk-teal);
   background: var(--zk-teal);
-  animation: blink 1.6s ease-in-out infinite;
-}
-
-@keyframes blink {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.35;
-  }
 }
 
 .queue-count {
@@ -820,7 +962,7 @@ onBeforeUnmount(() => {
   padding: 3px 9px;
   font-size: 12px;
   font-weight: 600;
-  border-radius: 999px;
+  border-radius: var(--zk-radius-sm);
   border: 1px solid;
 }
 
@@ -864,7 +1006,7 @@ onBeforeUnmount(() => {
 }
 
 .table-scroll :deep(.el-table__body tr:hover > td.el-table__cell) {
-  background-color: var(--zk-surface-2);
+  background-color: var(--el-table-row-hover-bg-color, #eef1ff);
   transition: background-color var(--zk-dur-fast) var(--zk-ease-out);
 }
 

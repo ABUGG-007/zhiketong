@@ -1,207 +1,469 @@
 <template>
-  <div class="login">
-    <!-- 品牌左栏 -->
-    <section class="hero">
-      <!-- 左侧能力展示：装饰性内容，屏幕阅读器跳过 -->
-      <div class="hero-grid" aria-hidden="true" />
-      <div class="hero-glow hero-glow--teal" aria-hidden="true" />
-      <div class="hero-glow hero-glow--indigo" aria-hidden="true" />
+  <div class="login-page">
+    <!-- 背景：蓝白渐变 + 3D 智能客服插画（已压缩为 WebP） -->
+    <div class="login-bg" aria-hidden="true" />
 
-      <div class="hero-inner">
-        <div class="brand">
-          <div class="brand-logo">智</div>
-          <div>
-            <div class="brand-name">智客通</div>
-            <div class="brand-sub">智能客服 · 工单协同平台</div>
+    <div class="login-shell">
+      <!-- 左侧：品牌、主标题、能力矩阵 -->
+      <section class="intro">
+        <header class="brand">
+          <img class="brand-mark" src="/brand-mark.png" alt="智能客服" width="64" height="64" />
+          <div class="brand-text">
+            <div class="brand-name">智能客服</div>
+            <div class="brand-slogan">让客服更简单 · 让业务更高效</div>
           </div>
-        </div>
+        </header>
 
-        <div class="hero-copy">
-          <div class="hero-eyebrow">
-            <span class="pulse" /> AI + 人工一体化客户服务
-          </div>
-          <h1>
-            让每一条客户消息<br />
-            <span class="accent">都有专业回应</span>
-          </h1>
-          <p class="hero-desc">
-            知识库自动应答、排队转人工、工单闭环与 SLA 追踪，一个工作台完成客服全流程。
-          </p>
-        </div>
+        <h1 class="headline">智能对话客服与工单系统</h1>
+        <p class="subline">为中小商家提供专业的智能客服解决方案</p>
 
-        <ul class="capabilities">
-          <li v-for="item in capabilities" :key="item.title">
-            <span class="cap-icon" :class="item.tone">
-              <el-icon><component :is="item.icon" /></el-icon>
-            </span>
-            <div>
-              <div class="cap-title">{{ item.title }}</div>
-              <div class="cap-desc">{{ item.desc }}</div>
-            </div>
+        <ul class="features">
+          <li v-for="item in capabilities" :key="item.title" class="feature">
+            <img
+              class="feature-icon"
+              :class="item.iconClass"
+              :src="item.icon"
+              alt=""
+              width="34"
+              height="34"
+              loading="eager"
+              decoding="async"
+            />
+            <h2 class="feature-title">{{ item.title }}</h2>
+            <p class="feature-desc">
+              <span>{{ item.desc[0] }}</span>
+              <span>{{ item.desc[1] }}</span>
+            </p>
           </li>
         </ul>
+      </section>
 
-        <div class="hero-footer">
-          <span>Spring Boot 2.7</span>
-          <span class="dot-sep" />
-          <span>Vue 3 + Vite</span>
-          <span class="dot-sep" />
-          <span>MySQL 8.0 · Redis</span>
-        </div>
-      </div>
-    </section>
-
-    <!-- 右侧登录 -->
-    <section class="panel">
-      <div class="panel-inner">
-        <div class="mobile-brand">
-          <div class="brand-logo">智</div>
-          <span class="brand-name">智客通</span>
-        </div>
-
-        <div class="panel-head">
-          <div class="zk-eyebrow">WELCOME BACK</div>
-          <h2>登录智客通工作台</h2>
-          <p>使用初始化账号进入，首次登录后请立即修改密码</p>
-        </div>
-
-        <el-form
-          ref="formRef"
-          :model="form"
-          :rules="rules"
-          label-position="top"
-          class="login-form"
-          :aria-describedby="errorMessage ? 'login-error' : undefined"
-          :aria-busy="loading"
-          @submit.prevent="onSubmit"
-        >
-          <el-form-item label="账号" prop="username">
-            <el-input
-              v-model.trim="form.username"
-              size="large"
-              placeholder="请输入账号"
-              autocomplete="username"
-              autofocus
-              aria-label="账号"
-              :prefix-icon="User"
-            />
-          </el-form-item>
-          <el-form-item label="密码" prop="password">
-            <el-input
-              v-model="form.password"
-              type="password"
-              size="large"
-              show-password
-              placeholder="请输入密码"
-              autocomplete="current-password"
-              aria-label="密码"
-              :prefix-icon="Lock"
-            />
-          </el-form-item>
-
-          <div v-if="errorMessage" id="login-error" class="form-error" role="alert" aria-live="assertive">
-            <el-icon aria-hidden="true"><WarningFilled /></el-icon>
-            <span>{{ errorMessage }}</span>
+      <!-- 右侧：登录卡片 -->
+      <section class="auth">
+        <div class="card">
+          <div class="tabs" role="tablist" aria-label="登录方式">
+            <button
+              type="button"
+              class="tab"
+              :class="{ 'is-active': mode === 'password' }"
+              role="tab"
+              :aria-selected="mode === 'password'"
+              aria-controls="pane-password"
+              @click="switchMode('password')"
+            >
+              账号登录
+            </button>
+            <button
+              type="button"
+              class="tab"
+              :class="{ 'is-active': mode === 'sms' }"
+              role="tab"
+              :aria-selected="mode === 'sms'"
+              aria-controls="pane-sms"
+              @click="switchMode('sms')"
+            >
+              验证码登录
+            </button>
           </div>
 
-          <el-button
-            class="submit-btn"
-            type="primary"
-            size="large"
-            native-type="submit"
-            :loading="loading"
+          <form
+            v-if="mode === 'password'"
+            id="pane-password"
+            class="form"
+            role="tabpanel"
+            novalidate
+            @submit.prevent="onSubmit"
           >
-            {{ loading ? '登录中…' : '登录工作台' }}
-          </el-button>
-        </el-form>
+            <label
+              class="field"
+              :class="{ 'has-error': !!errors.username, 'zk-shake': shaking === 'username' }"
+            >
+              <span class="field-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+                  <circle cx="12" cy="8" r="3.2" />
+                  <path d="M5.4 19.2c.9-3.3 3.5-5.2 6.6-5.2s5.7 1.9 6.6 5.2" stroke-linecap="round" />
+                </svg>
+              </span>
+              <input
+                ref="usernameInput"
+                v-model.trim="form.username"
+                type="text"
+                name="username"
+                placeholder="请输入账号/手机号"
+                autocomplete="username"
+                aria-label="账号"
+                :aria-invalid="!!errors.username"
+                :aria-describedby="errors.username ? 'login-error' : undefined"
+                @input="clearError('username')"
+              />
+            </label>
 
-        <div class="panel-foot" role="status" aria-live="polite">
-          <span class="foot-dot" :class="healthTone" aria-hidden="true" />
-          <span>{{ healthText }}</span>
-          <span class="foot-sep">·</span>
-          <span>接口 {{ apiHint }}</span>
+            <label
+              class="field"
+              :class="{ 'has-error': !!errors.password || authFailed, 'zk-shake': shaking === 'password' }"
+            >
+              <span class="field-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+                  <rect x="4.6" y="10.2" width="14.8" height="9.8" rx="2.4" />
+                  <path d="M8.4 10.2V7.9a3.6 3.6 0 0 1 7.2 0v2.3" stroke-linecap="round" />
+                </svg>
+              </span>
+              <input
+                ref="passwordInput"
+                v-model="form.password"
+                :type="passwordVisible ? 'text' : 'password'"
+                name="password"
+                placeholder="请输入密码"
+                autocomplete="current-password"
+                aria-label="密码"
+                :aria-invalid="!!errors.password"
+                :aria-describedby="errors.password ? 'login-error' : undefined"
+                @input="clearError('password')"
+              />
+              <button
+                type="button"
+                class="eye"
+                :aria-label="passwordVisible ? '隐藏密码' : '显示密码'"
+                :aria-pressed="passwordVisible"
+                @click="passwordVisible = !passwordVisible"
+              >
+                <transition name="zk-eye">
+                  <svg v-if="!passwordVisible" key="off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+                    <path d="M2.6 12S6.2 5.9 12 5.9 21.4 12 21.4 12 17.8 18.1 12 18.1 2.6 12 2.6 12Z" />
+                    <circle cx="12" cy="12" r="2.7" />
+                    <path d="M4.2 19.8 19.8 4.2" stroke-linecap="round" />
+                  </svg>
+                  <svg v-else key="on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+                    <path d="M2.6 12S6.2 5.9 12 5.9 21.4 12 21.4 12 17.8 18.1 12 18.1 2.6 12 2.6 12Z" />
+                    <circle cx="12" cy="12" r="2.7" />
+                  </svg>
+                </transition>
+              </button>
+            </label>
+
+            <div class="helper-row">
+              <label class="remember">
+                <input v-model="form.remember" type="checkbox" />
+                <span class="checkbox" aria-hidden="true">
+                  <svg viewBox="0 0 18 18" fill="none">
+                    <path
+                      d="m4.4 9.2 3 3 6.2-6.4"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    />
+                  </svg>
+                </span>
+                <span>记住账号</span>
+              </label>
+              <button type="button" class="link" @click="openInfo('forgot')">忘记密码?</button>
+            </div>
+
+            <!-- 错误提示常驻占位：出现时只做滑下淡入，不挤动下方按钮 -->
+            <div class="error-slot">
+              <transition name="zk-err">
+                <p
+                  v-if="errorMessage"
+                  id="login-error"
+                  class="form-error"
+                  role="alert"
+                  aria-live="assertive"
+                  :title="errorMessage"
+                >
+                  <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.6" />
+                    <path d="M12 7.6v5.2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+                    <circle cx="12" cy="16.4" r="1.05" fill="currentColor" />
+                  </svg>
+                  <span>{{ errorMessage }}</span>
+                </p>
+              </transition>
+            </div>
+
+            <!-- 提交按钮三连变：文字淡出 → 转圈 → 对勾画出来，成功停留后跳转 -->
+            <button
+              class="submit"
+              :class="[`is-${btnState}`, { 'zk-shake': btnShaking }]"
+              type="submit"
+              :disabled="btnState !== 'idle'"
+              :aria-busy="btnState === 'loading' ? 'true' : 'false'"
+              :aria-label="submitLabel"
+            >
+              <transition name="zk-submit" mode="out-in">
+                <span v-if="btnState === 'idle'" key="idle" class="submit-label">登录</span>
+                <span v-else-if="btnState === 'loading'" key="loading" class="spinner" aria-hidden="true" />
+                <svg v-else key="ok" class="submit-check" viewBox="0 0 24 24" aria-hidden="true">
+                  <path
+                    d="m5.6 12.4 4.2 4.2 8.6-8.8"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2.2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  />
+                </svg>
+              </transition>
+            </button>
+          </form>
+
+          <div v-else id="pane-sms" class="form gate" role="tabpanel">
+            <span class="gate-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+                <rect x="6.6" y="2.6" width="10.8" height="18.8" rx="2.6" />
+                <path d="M10.6 5.4h2.8" stroke-linecap="round" />
+                <path d="m9.8 13.6 1.7 1.7 3.1-3.3" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+            </span>
+            <h3>验证码登录需先开通短信通道</h3>
+            <p>
+              当前环境尚未接入短信服务商，手机号验证码暂不可用。请使用账号密码登录，或联系租户管理员在系统设置中配置短信通道后启用。
+            </p>
+            <button type="button" class="gate-action" @click="switchMode('password')">返回账号登录</button>
+          </div>
+
+          <div class="divider"><span>其他登录方式</span></div>
+
+          <button type="button" class="sso" aria-label="SSO 登录" @click="openInfo('sso')">
+            <svg class="sso-shield" viewBox="0 0 24 24" aria-hidden="true">
+              <path
+                d="M12 2.4 4.6 5.3v5.6c0 4.7 3.1 8.6 7.4 10.4 4.3-1.8 7.4-5.7 7.4-10.4V5.3L12 2.4Z"
+                fill="currentColor"
+              />
+              <path
+                d="m8.5 11.7 2.3 2.3 4.6-4.7"
+                stroke="#fff"
+                stroke-width="1.9"
+                fill="none"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+          </button>
+          <p class="sso-label">SSO 登录</p>
+
+          <p class="legal">
+            <svg viewBox="0 0 24 24" class="legal-shield" aria-hidden="true">
+              <path
+                d="M12 2.4 4.6 5.3v5.6c0 4.7 3.1 8.6 7.4 10.4 4.3-1.8 7.4-5.7 7.4-10.4V5.3L12 2.4Z"
+                fill="currentColor"
+              />
+              <path
+                d="m8.6 11.7 2.2 2.2 4.5-4.6"
+                stroke="#fff"
+                stroke-width="1.9"
+                fill="none"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+            <span>登录即表示您已同意</span>
+            <button type="button" class="link" @click="openInfo('terms')">《用户协议》</button>
+            <span>和</span>
+            <button type="button" class="link" @click="openInfo('privacy')">《隐私政策》</button>
+          </p>
         </div>
+      </section>
+    </div>
+
+    <el-dialog v-model="info.visible" :title="info.title" width="432px" class="zk-login-dialog" align-center>
+      <div class="zk-login-dialog__body">
+        <p v-for="(line, index) in info.lines" :key="index">{{ line }}</p>
       </div>
-    </section>
+      <template #footer>
+        <button type="button" class="zk-login-dialog__ok" @click="info.visible = false">我知道了</button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import {
-  Collection,
-  Headset,
-  Lock,
-  Tickets,
-  User,
-  WarningFilled
-} from '@element-plus/icons-vue'
-import { getHealth, login } from '@/api'
+import { login } from '@/api'
 import { saveAuth } from '@/api/http'
 import { roleHomePath } from '@/router'
+import { haptic } from '@/composables/motion'
+
+const REMEMBER_KEY = 'zk.login.remember'
 
 const router = useRouter()
 const route = useRoute()
 
-const formRef = ref(null)
-const loading = ref(false)
+const mode = ref('password')
+const btnState = ref('idle') // idle / loading / success：提交按钮三连变的状态
+const passwordVisible = ref(false)
 const errorMessage = ref('')
+const errors = reactive({ username: '', password: '' })
+const usernameInput = ref(null)
+const passwordInput = ref(null)
+const shaking = ref('') // 正在摇头的输入框
+const btnShaking = ref(false) // 提交失败时按钮摇头
+const authFailed = ref(false)
+
+let shakeTimer = 0
+let btnShakeTimer = 0
+
+const submitLabel = computed(() => {
+  if (btnState.value === 'loading') return '正在登录'
+  if (btnState.value === 'success') return '登录成功'
+  return '登录'
+})
+
+/** 输错摇头：先摘掉、隔一帧再挂上，连续失败也能重新播（400ms，幅度递减） */
+function shakeField(field) {
+  shaking.value = ''
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      shaking.value = field
+      window.clearTimeout(shakeTimer)
+      shakeTimer = window.setTimeout(() => {
+        shaking.value = ''
+      }, 460)
+    })
+  })
+  haptic(28)
+}
+
+/** 提交失败：按钮自己摇 400ms 后回到常态（同一套递减幅度） */
+function shakeSubmit() {
+  btnShaking.value = false
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      btnShaking.value = true
+      window.clearTimeout(btnShakeTimer)
+      btnShakeTimer = window.setTimeout(() => {
+        btnShaking.value = false
+      }, 460)
+    })
+  })
+  haptic(28)
+}
 
 const form = reactive({
   username: '',
-  password: ''
+  password: '',
+  remember: true
 })
 
-const rules = {
-  username: [{ required: true, message: '请输入账号', trigger: 'blur' }],
-  password: [
-    { required: true, message: '请输入密码', trigger: 'blur' },
-    { min: 6, message: '密码至少 6 位', trigger: 'blur' }
-  ]
-}
-
+/** 左侧能力矩阵：与产品实际能力一一对应 */
 const capabilities = [
   {
-    title: '知识库智能应答',
-    desc: '关键词 + 语义匹配，常见问题秒级回复',
-    icon: Collection,
-    tone: 'teal'
+    title: '智能对话',
+    desc: ['基于知识库自动问答', '高效解决客户问题'],
+    icon: '/brand-mark.png',
+    iconClass: 'feature-icon--mark'
   },
   {
-    title: '人机协同接待',
-    desc: 'AI 无法解决时排队转接人工坐席',
-    icon: Headset,
-    tone: 'indigo'
+    title: '知识库管理',
+    desc: ['多渠道知识沉淀', '快速配置更新'],
+    icon: '/login/icon-kb.webp'
   },
   {
-    title: '工单闭环与 SLA',
-    desc: '优先级 SLA 计时、超时预警与全链路日志',
-    icon: Tickets,
-    tone: 'amber'
+    title: '工单流转',
+    desc: ['全流程跟踪', '高效协同处理'],
+    icon: '/login/icon-order.webp'
+  },
+  {
+    title: '转人工坐席',
+    desc: ['灵活分配坐席', '提升服务体验'],
+    icon: '/login/icon-agent.webp'
   }
 ]
 
-const apiHint = computed(() => {
-  const env = import.meta.env.VITE_API_BASE
-  return env || '/api（经由 Vite 代理 → localhost:8080）'
-})
+/* ---------------- 交互辅助信息弹层 ---------------- */
+const info = reactive({ visible: false, title: '', lines: [] })
 
-/* 后端健康状态（登录页也能看到服务是否在线） */
-const health = ref({ status: 'loading' })
-const healthTone = computed(() => {
-  if (health.value.status === 'loading') return 'slate'
-  if (health.value.status === 'UP') return 'teal'
-  if (health.value.status === 'DEGRADED') return 'amber'
-  return 'red'
-})
-const healthText = computed(() => {
-  if (health.value.status === 'loading') return '正在检测后端服务…'
-  if (health.value.status === 'UP') return '后端服务正常'
-  if (health.value.status === 'DEGRADED') return '依赖服务降级'
-  return '后端服务未连接（请确认 8080 已启动）'
-})
+const INFO_CONTENT = {
+  forgot: {
+    title: '忘记密码',
+    lines: [
+      '为保障租户数据安全，密码重置由管理员统一处理。',
+      '请联系所在租户的管理员，在「系统设置 · 账号管理」中为你重置初始密码；重置后首次登录请立即修改。',
+      '若你是租户管理员，可通过同一入口重置自身密码，或提交工单由平台运维协助处理。'
+    ]
+  },
+  sso: {
+    title: 'SSO 单点登录',
+    lines: [
+      'SSO 单点登录需接入企业身份源（OIDC / SAML 2.0）。',
+      '请租户管理员在「系统设置 · 单点登录」中填写身份源地址、客户端标识与密钥，保存后本入口即可使用。',
+      '未配置身份源时，请使用账号密码登录。'
+    ]
+  },
+  terms: {
+    title: '用户协议',
+    lines: [
+      '账号按租户独立开通，仅限授权人员在授权范围内使用，禁止转借或共享。',
+      '坐席对会话、工单与客户资料的处理须遵守所在租户的服务规范；越权访问其他租户数据将被拒绝并记录审计日志。',
+      '平台按套餐约定提供智能应答、坐席辅助、工单与统计能力，超出套餐范围的调用会被拦截并提示。'
+    ]
+  },
+  privacy: {
+    title: '隐私政策',
+    lines: [
+      '登录环节记录账号、登录时间、IP 与设备信息，用于身份校验与安全审计。',
+      '访客会话、工单与知识库内容按租户隔离存储，仅用于服务交付、质检与统计，AI 调用仅发送完成应答所需的上下文。',
+      '数据导出与删除由租户管理员发起，平台按租户级别执行，操作全程留痕。'
+    ]
+  }
+}
+
+function openInfo(kind) {
+  const content = INFO_CONTENT[kind]
+  if (!content) return
+  info.title = content.title
+  info.lines = content.lines
+  info.visible = true
+}
+
+/* ---------------- 登录流程 ---------------- */
+function switchMode(next) {
+  if (mode.value === next) return
+  mode.value = next
+  errorMessage.value = ''
+  errors.username = ''
+  errors.password = ''
+  authFailed.value = false
+  if (next === 'password') {
+    nextTick(() => usernameInput.value?.focus())
+  }
+}
+
+function clearError(field) {
+  errors[field] = ''
+  authFailed.value = false
+  if (errorMessage.value) errorMessage.value = ''
+}
+
+function validate() {
+  errors.username = form.username ? '' : '请输入账号'
+  if (!form.password) {
+    errors.password = '请输入密码'
+  } else if (form.password.length < 6) {
+    errors.password = '密码至少 6 位'
+  } else {
+    errors.password = ''
+  }
+  if (errors.username || errors.password) {
+    errorMessage.value = errors.username || errors.password
+    return false
+  }
+  return true
+}
+
+function syncRemembered() {
+  try {
+    if (form.remember && form.username) {
+      localStorage.setItem(REMEMBER_KEY, form.username)
+    } else {
+      localStorage.removeItem(REMEMBER_KEY)
+    }
+  } catch {
+    /* 隐私模式下忽略存储异常 */
+  }
+}
 
 /** 仅允许跳转到当前角色所属入口（或旧路径，由路由按角色再重定向） */
 function isRedirectAllowed(path, roleCode) {
@@ -214,680 +476,1039 @@ function isRedirectAllowed(path, roleCode) {
 }
 
 async function onSubmit() {
-  if (loading.value) return
-  const formEl = formRef.value
-  if (!formEl) return
-  try {
-    await formEl.validate()
-  } catch {
+  if (btnState.value !== 'idle') return
+  if (!validate()) {
+    // 只摇第一个出错的框，其余保持红框 + 文字，避免整页一起抖
+    if (errors.username) shakeField('username')
+    else if (errors.password) shakeField('password')
     return
   }
 
-  loading.value = true
+  btnState.value = 'loading'
   errorMessage.value = ''
+  authFailed.value = false
   try {
     const data = await login({ username: form.username, password: form.password })
     const token = data?.token || data?.accessToken
     if (!token) {
-      errorMessage.value = '登录响应缺少 token，请检查后端返回结构'
+      errorMessage.value = '登录失败，请稍后重试'
+      btnState.value = 'idle'
       return
     }
+    syncRemembered()
     saveAuth(token, data.user || null)
-    ElMessage.success(`欢迎回来，${data.user?.nickname || form.username}`)
 
-    // 按角色落地：ADMIN → /admin/dashboard，AGENT → /agent/workbench，USER → /user/home
     const roleCode = data.user?.roleCode
     const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : ''
-    const target = isRedirectAllowed(redirect, roleCode)
-      ? redirect
-      : roleHomePath(roleCode)
-    router.replace(target)
+    const target = isRedirectAllowed(redirect, roleCode) ? redirect : roleHomePath(roleCode)
+    // 成功：先画出对勾，停留 900ms 让用户看见结果，再跳转
+    btnState.value = 'success'
+    window.setTimeout(() => {
+      ElMessage.success(`欢迎回来，${data.user?.nickname || form.username}`)
+      router.replace(target)
+    }, 900)
   } catch (error) {
+    const status = error?.response?.status
+    // 只有凭据被拒才标红输入框；网络/服务端错误不怪用户
+    authFailed.value = status === 400 || status === 401 || status === 403
     errorMessage.value =
       error?.response?.data?.message || error?.message || '登录失败，请检查账号密码'
-  } finally {
-    loading.value = false
+    btnState.value = 'idle'
+    shakeSubmit()
   }
 }
 
-onMounted(async () => {
+onMounted(() => {
+  let saved = ''
   try {
-    const data = await getHealth()
-    const mysqlUp = data?.checks?.mysql?.status === 'UP'
-    const redisUp = data?.checks?.redis?.status === 'UP'
-    health.value = { status: data?.status === 'UP' && mysqlUp && redisUp ? 'UP' : 'DEGRADED' }
+    saved = localStorage.getItem(REMEMBER_KEY) || ''
   } catch {
-    health.value = { status: 'DOWN' }
+    saved = ''
   }
+  if (saved) {
+    form.username = saved
+    form.remember = true
+  }
+  nextTick(() => {
+    if (saved) {
+      passwordInput.value?.focus()
+    } else {
+      usernameInput.value?.focus()
+    }
+  })
+})
+
+onBeforeUnmount(() => {
+  if (shakeTimer) window.clearTimeout(shakeTimer)
+  if (btnShakeTimer) window.clearTimeout(btnShakeTimer)
 })
 </script>
 
 <style scoped>
-.login {
-  min-height: 100vh;
-  display: flex;
-  background: #ffffff;
-}
-
-/* ---------------- 左侧品牌 ---------------- */
-.hero {
+/* =========================================================
+   登录页 · 蓝白 3D 视觉（对齐设计稿 1536×1024 基准）
+   ========================================================= */
+.login-page {
+  --lp-blue: #1068fd;
+  --lp-blue-deep: #0b57d0;
+  --lp-ink: #0b1b3c;
+  --lp-line: #e6ecf2;
+  --lp-placeholder: #a9b6c8;
   position: relative;
-  flex: 1 1 auto;
-  min-width: 0;
-  overflow: hidden;
-  background:
-    radial-gradient(120% 90% at 0% 0%, #17244a 0%, transparent 58%),
-    linear-gradient(155deg, #080e1a 0%, #0f172a 46%, #101c33 100%);
-  color: #e2e8f0;
-  display: flex;
+  min-height: 100vh;
+  min-height: 100dvh;
+  isolation: isolate;
+  overflow-x: hidden;
 }
 
-.hero-grid {
+.login-bg {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  /* 底色：与背景图边缘采样色对齐，大视口下承接插画层之外的区域 */
+  background:
+    radial-gradient(120% 85% at 80% 26%, rgba(186, 216, 250, 0.5), rgba(186, 216, 250, 0) 62%),
+    linear-gradient(180deg, #f5fafe 0%, #eef5fd 60%, #edf4fd 100%);
+}
+
+.login-bg::before {
+  content: '';
   position: absolute;
   inset: 0;
-  background-image: linear-gradient(rgba(148, 163, 184, 0.07) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(148, 163, 184, 0.07) 1px, transparent 1px);
-  background-size: 46px 46px;
-  mask-image: radial-gradient(120% 100% at 20% 0%, #000 0%, transparent 78%);
-  -webkit-mask-image: radial-gradient(120% 100% at 20% 0%, #000 0%, transparent 78%);
+  background-image: url('/login/login-bg.webp');
+  /* 插画锚定底部，保证标题与能力矩阵不被 3D 主体遮挡 */
+  background-position: center bottom;
+  background-size: cover;
+  background-repeat: no-repeat;
 }
 
-.hero-glow {
-  position: absolute;
-  border-radius: 50%;
-  filter: blur(90px);
-  opacity: 0.5;
-  pointer-events: none;
-}
-
-.hero-glow--teal {
-  width: 420px;
-  height: 420px;
-  background: #0f766e;
-  top: -120px;
-  left: -80px;
-}
-
-.hero-glow--indigo {
-  width: 460px;
-  height: 460px;
-  background: #4338ca;
-  bottom: -180px;
-  right: -80px;
-  opacity: 0.45;
-}
-
-.hero-inner {
-  position: relative;
-  z-index: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 30px;
-  padding: 44px 56px 36px;
-  width: 100%;
-  max-width: 760px;
-  margin: 0 auto;
-}
-
-.brand {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.brand-logo {
-  width: 40px;
-  height: 40px;
-  border-radius: 12px;
-  background: linear-gradient(140deg, #14b8a6, #0e9f9c 48%, #4f46e5);
-  color: #fff;
-  font-size: 19px;
-  font-weight: 700;
-  display: grid;
-  place-items: center;
-  box-shadow: 0 10px 24px -12px rgba(20, 184, 166, 0.9), inset 0 0 0 1px rgba(255, 255, 255, 0.18);
-}
-
-.brand-name {
-  font-size: 18px;
-  font-weight: 700;
-  letter-spacing: 2px;
-  color: #f8fafc;
-}
-
-.brand-sub {
-  font-size: 11px;
-  color: #8194ae;
-  letter-spacing: 0.6px;
-  margin-top: 3px;
-}
-
-.hero-copy {
-  max-width: 560px;
-}
-
-.hero-eyebrow {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 11.5px;
-  letter-spacing: 1px;
-  color: #7dd3c8;
-  background: rgba(20, 184, 166, 0.1);
-  border: 1px solid rgba(20, 184, 166, 0.24);
-  padding: 5px 11px;
-  border-radius: 999px;
-  margin-bottom: 18px;
-}
-
-.pulse {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: #2dd4bf;
-  box-shadow: 0 0 0 4px rgba(45, 212, 191, 0.16);
-  animation: pulse 2.2s ease-in-out infinite;
-}
-
-@keyframes pulse {
-  0%,
-  100% {
-    box-shadow: 0 0 0 3px rgba(45, 212, 191, 0.16);
-  }
-  50% {
-    box-shadow: 0 0 0 6px rgba(45, 212, 191, 0.06);
+/* 大视口 / 矮视口：插画不随 cover 放大，锁定设计稿原始尺寸并收向左下角；
+   宽度同时受「视口高 - 460px」约束，保证插画顶边始终落在特性文案下方，
+   边缘用遮罩淡入底色，避免硬接缝 */
+@media (min-width: 1600px), (min-height: 1100px), (max-height: 1010px) {
+  .login-bg::before {
+    inset: auto auto 0 0;
+    width: min(1536px, 100%, max(360px, calc((100vh - 460px) * 2.826)));
+    aspect-ratio: 1536 / 1024;
+    background-position: left bottom;
+    background-size: 100% 100%;
+    -webkit-mask-image:
+      linear-gradient(to bottom, transparent 0, #000 140px),
+      linear-gradient(to right, #000 calc(100% - 180px), transparent 100%);
+    mask-image:
+      linear-gradient(to bottom, transparent 0, #000 140px),
+      linear-gradient(to right, #000 calc(100% - 180px), transparent 100%);
+    -webkit-mask-composite: source-in;
+    mask-composite: intersect;
   }
 }
 
-.hero-copy h1 {
-  font-size: 38px;
-  line-height: 1.32;
-  font-weight: 700;
-  letter-spacing: -0.5px;
-  color: #f8fafc;
-}
-
-.hero-copy h1 .accent {
-  background: linear-gradient(100deg, #5eead4 0%, #a5b4fc 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-}
-
-.hero-desc {
-  margin-top: 16px;
-  font-size: 13.5px;
-  line-height: 1.85;
-  color: #94a3b8;
-  max-width: 480px;
-}
-
-.capabilities {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  display: grid;
-  gap: 12px;
-  max-width: 520px;
-}
-
-.capabilities li {
+.login-shell {
   display: flex;
-  align-items: center;
-  gap: 13px;
-  padding: 11px 14px;
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.035);
-  border: 1px solid rgba(148, 163, 184, 0.13);
-}
-
-.cap-icon {
-  width: 34px;
-  height: 34px;
-  flex: 0 0 34px;
-  border-radius: 10px;
-  display: grid;
-  place-items: center;
-  font-size: 17px;
-}
-
-.cap-icon.teal {
-  color: #5eead4;
-  background: rgba(20, 184, 166, 0.14);
-  border: 1px solid rgba(20, 184, 166, 0.24);
-}
-
-.cap-icon.indigo {
-  color: #a5b4fc;
-  background: rgba(79, 70, 229, 0.16);
-  border: 1px solid rgba(99, 102, 241, 0.26);
-}
-
-.cap-icon.amber {
-  color: #fcd34d;
-  background: rgba(245, 158, 11, 0.13);
-  border: 1px solid rgba(245, 158, 11, 0.24);
-}
-
-.cap-title {
-  font-size: 13.5px;
-  font-weight: 600;
-  color: #e2e8f0;
-}
-
-.cap-desc {
-  margin-top: 3px;
-  font-size: 12px;
-  color: #8ba0bd;
-}
-
-.chat-preview {
-  max-width: 470px;
-  border-radius: 16px;
-  padding: 14px 16px;
-  background: rgba(15, 23, 42, 0.55);
-  border: 1px solid rgba(148, 163, 184, 0.15);
-  backdrop-filter: blur(8px);
-  display: grid;
-  gap: 10px;
-}
-
-.chat-line {
-  display: flex;
-  gap: 8px;
-  align-items: flex-start;
-}
-
-.chat-line--user {
-  justify-content: flex-end;
-}
-
-.chat-bubble {
-  font-size: 12px;
-  line-height: 1.7;
-  padding: 8px 12px;
-  border-radius: 12px;
-  background: rgba(148, 163, 184, 0.14);
-  color: #cbd5e1;
-  max-width: 100%;
-}
-
-.chat-bubble--ai {
-  background: rgba(20, 184, 166, 0.1);
-  border: 1px solid rgba(20, 184, 166, 0.24);
-  color: #d7f4ef;
-  border-top-left-radius: 4px;
-}
-
-.ai-avatar {
-  width: 24px;
-  height: 24px;
-  flex: 0 0 24px;
-  border-radius: 8px;
-  background: linear-gradient(140deg, #14b8a6, #4f46e5);
-  color: #fff;
-  font-size: 9.5px;
-  font-weight: 700;
-  display: grid;
-  place-items: center;
-}
-
-.chat-meta {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-top: 7px;
-  flex-wrap: wrap;
-}
-
-.hit-chip {
-  font-size: 10px;
-  color: #5eead4;
-  background: rgba(20, 184, 166, 0.14);
-  border: 1px solid rgba(20, 184, 166, 0.2);
-  border-radius: 999px;
-  padding: 2px 7px;
-}
-
-.chat-time {
-  font-size: 10px;
-  color: #64748b;
-}
-
-.hero-footer {
-  margin-top: auto;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  font-size: 11px;
-  color: #64748b;
-  letter-spacing: 0.4px;
-  flex-wrap: wrap;
-}
-
-.dot-sep {
-  width: 3px;
-  height: 3px;
-  border-radius: 50%;
-  background: #3b4a61;
-}
-
-/* ---------------- 右侧登录 ---------------- */
-.panel {
-  flex: 0 0 520px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 48px 40px;
-  background: #ffffff;
-  border-left: 1px solid var(--zk-border);
-}
-
-.panel-inner {
-  width: 100%;
-  max-width: 372px;
-}
-
-.mobile-brand {
-  display: none;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 26px;
-}
-
-.panel-head {
-  margin-bottom: 26px;
-}
-
-.panel-head h2 {
-  font-size: 24px;
-  font-weight: 700;
-  letter-spacing: -0.3px;
-  color: var(--zk-text);
-}
-
-.panel-head p {
-  margin-top: 9px;
-  font-size: 12.5px;
-  line-height: 1.7;
-  color: var(--zk-text-2);
-}
-
-.panel-head b {
-  color: var(--zk-indigo);
-}
-
-.login-form :deep(.el-form-item) {
-  margin-bottom: 18px;
-}
-
-.login-form :deep(.el-form-item__label) {
-  font-size: 12.5px;
-  font-weight: 600;
-  color: #475569;
-  padding-bottom: 6px;
-}
-
-.login-form :deep(.el-input__wrapper) {
-  border-radius: 10px;
-  box-shadow: 0 0 0 1px #dfe5ef inset;
-  padding: 2px 12px;
-}
-
-.form-error {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  font-size: 12px;
-  color: #be123c;
-  background: #fff1f4;
-  border: 1px solid #fbd0da;
-  border-radius: 8px;
-  padding: 8px 11px;
-  margin-bottom: 14px;
-}
-
-.submit-btn {
-  width: 100%;
-  height: 44px;
-  border-radius: 10px;
-  font-size: 14px;
-  font-weight: 600;
-  letter-spacing: 0.5px;
-}
-
-.demo-block {
-  margin-top: 26px;
-  padding-top: 20px;
-  border-top: 1px dashed var(--zk-border-strong);
-}
-
-.demo-head {
-  display: flex;
-  align-items: center;
+  align-items: stretch;
   justify-content: space-between;
-  font-size: 12px;
-  font-weight: 600;
-  color: #475569;
-  margin-bottom: 10px;
-}
-
-.demo-hint {
-  font-weight: 400;
-  color: var(--zk-text-3);
-  font-size: 11px;
-}
-
-.demo-chips {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
-}
-
-.demo-chip {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 4px;
-  padding: 9px 10px;
-  border-radius: 10px;
-  border: 1px solid var(--zk-border);
-  background: #fbfcfe;
-  cursor: pointer;
-  transition: all 0.16s ease;
-  font-family: inherit;
-}
-
-.demo-chip:hover {
-  border-color: #c7d2fe;
-  background: #f6f7ff;
-  transform: translateY(-1px);
-  box-shadow: 0 8px 18px -14px rgba(79, 70, 229, 0.8);
-}
-
-.chip-role {
-  font-size: 10px;
-  font-weight: 700;
-  padding: 1px 6px;
-  border-radius: 999px;
-}
-
-.chip-role.red {
-  color: #be123c;
-  background: #fff0f3;
-}
-.chip-role.indigo {
-  color: #4338ca;
-  background: #eef0ff;
-}
-.chip-role.slate {
-  color: #475569;
-  background: #f1f5fa;
-}
-
-.chip-user {
-  font-size: 12px;
-  color: #1f2b3d;
-  font-weight: 600;
-  font-family: 'JetBrains Mono', Consolas, monospace;
-}
-
-.panel-foot {
-  margin-top: 26px;
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  font-size: 11px;
-  color: var(--zk-text-3);
-  flex-wrap: wrap;
-}
-
-.foot-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: #94a3b8;
-}
-.foot-dot.teal {
-  background: #14b8a6;
-  box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.14);
-}
-.foot-dot.amber {
-  background: #f59e0b;
-}
-.foot-dot.red {
-  background: #e11d48;
-}
-.foot-dot.slate {
-  background: #94a3b8;
-}
-
-.foot-sep {
-  color: #cbd5e1;
-}
-
-/* ---------------- 响应式 ---------------- */
-@media (max-width: 1180px) {
-  .hero-inner {
-    padding: 36px 40px 30px;
-  }
-  .hero-copy h1 {
-    font-size: 32px;
-  }
-  .panel {
-    flex-basis: 440px;
-    padding: 40px 32px;
-  }
-}
-
-@media (max-width: 960px) {
-  .hero {
-    display: none;
-  }
-  .panel {
-    flex: 1;
-    border-left: none;
-  }
-  .mobile-brand {
-    display: flex;
-  }
-  .panel-inner {
-    max-width: 400px;
-  }
-}
-
-@media (max-height: 820px) and (min-width: 961px) {
-  .chat-preview {
-    display: none;
-  }
-  .hero-inner {
-    gap: 22px;
-  }
-  .hero-copy h1 {
-    font-size: 32px;
-  }
-}
-/* ---------------- v2：对比度、焦点与移动端 ---------------- */
-.login {
+  gap: 24px;
+  padding: 0 95px 0 108px;
   min-height: 100vh;
   min-height: 100dvh;
 }
 
-.panel {
-  overflow-y: auto;
+/* ---------------- 左侧 ---------------- */
+.intro {
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: 780px;
+  padding: 68px 0 48px;
 }
 
-.hero-desc {
-  color: #a7b6c9;
+.brand {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
 }
 
-.cap-desc {
-  color: #a3b3c8;
+.brand-mark {
+  width: 64px;
+  height: 64px;
+  flex: 0 0 64px;
+  display: block;
+  filter: drop-shadow(0 8px 16px rgba(16, 104, 253, 0.18));
 }
 
-.chat-time {
-  color: #94a3b8;
+.brand-text {
+  padding-top: 4px;
 }
 
-.hero-footer {
-  color: #94a3b8;
+.brand-name {
+  font-size: 34px;
+  line-height: 1.2;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: #071433;
 }
 
-.demo-chip {
-  min-height: 48px;
-  transition: border-color var(--zk-dur-fast) var(--zk-ease-out),
-    background-color var(--zk-dur-fast) var(--zk-ease-out),
-    transform var(--zk-dur-fast) var(--zk-ease-out),
-    box-shadow var(--zk-dur-fast) var(--zk-ease-out);
+.brand-slogan {
+  margin-top: 10px;
+  font-size: 12.5px;
+  letter-spacing: 3px;
+  color: #8b98ac;
 }
 
-.demo-chip:hover {
+.headline {
+  margin-top: 71px;
+  font-size: 44px;
+  line-height: 1.2;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  color: var(--lp-ink);
+}
+
+.subline {
+  margin-top: 8px;
+  font-size: 21px;
+  line-height: 1.5;
+  color: #66788f;
+}
+
+.features {
+  display: flex;
+  align-items: flex-start;
+  margin: 36px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.feature:nth-child(1) {
+  width: 194px;
+}
+.feature:nth-child(2) {
+  width: 178px;
+}
+.feature:nth-child(3) {
+  width: 170px;
+}
+
+.feature-icon {
+  display: block;
+  width: auto;
+  height: 32px;
+  object-fit: contain;
+  filter: drop-shadow(0 6px 10px rgba(16, 104, 253, 0.14));
+}
+
+.feature-icon--mark {
+  width: 32px;
+  height: 32px;
+}
+
+.feature-title {
+  margin-top: 13px;
+  font-size: 17px;
+  line-height: 1.2;
+  font-weight: 600;
+  color: #15233b;
+}
+
+.feature-desc {
+  display: flex;
+  flex-direction: column;
+  margin-top: 6px;
+  font-size: 14px;
+  line-height: 22px;
+  color: #93a4b8;
+  white-space: nowrap;
+}
+
+/* ---------------- 右侧登录卡片 ---------------- */
+.auth {
+  flex: 0 0 557px;
+  display: flex;
+  align-items: center;
+  /* 上下留白不对称，使卡片顶边落在设计稿 y=182 基准 */
+  padding: 80px 0 55px;
+}
+
+.card {
+  width: 100%;
+  background: #ffffff;
+  border-radius: 14px;
+  padding: 62px 54px 0;
+  box-shadow:
+    0 30px 68px -40px rgba(13, 72, 160, 0.28),
+    0 2px 10px rgba(13, 72, 160, 0.04);
+}
+
+/* 登录页五个区块以 60ms 依次浮现（每个 420ms，进场 ease-out，只播一次） */
+.intro .brand,
+.headline,
+.subline,
+.features,
+.card {
+  animation: lp-rise 420ms var(--zk-ease-soft) both;
+  animation-delay: calc(var(--lp-i, 0) * 60ms);
+}
+
+.intro .brand {
+  --lp-i: 0;
+}
+
+.headline {
+  --lp-i: 1;
+}
+
+.subline {
+  --lp-i: 2;
+}
+
+.features {
+  --lp-i: 3;
+}
+
+.card {
+  --lp-i: 4;
+}
+
+/* 登录方式 Tab */
+.tabs {
+  display: flex;
+  align-items: flex-end;
+  gap: 53px;
+  border-bottom: 1px solid #eef1f6;
+}
+
+.tab {
+  position: relative;
+  padding: 0 7px 16px;
+  border: 0;
+  background: transparent;
+  font-family: inherit;
+  font-size: 20px;
+  line-height: 28px;
+  font-weight: 600;
+  color: #3b465c;
+  cursor: pointer;
+  transition: color 160ms ease;
+}
+
+.tab:hover {
+  color: var(--lp-blue);
+}
+
+.tab.is-active {
+  color: var(--lp-blue);
+}
+
+.tab.is-active::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  bottom: -1px;
+  left: 0;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--lp-blue);
+}
+
+/* 表单 */
+.form {
+  margin-top: 44px;
+}
+
+.field {
+  display: flex;
+  align-items: center;
+  gap: 25px;
+  height: 50px;
+  padding: 0 16px;
+  border: 1px solid var(--lp-line);
+  border-radius: 9px;
+  background: #ffffff;
+  transition:
+    border-color var(--zk-dur-base) var(--zk-ease-out),
+    box-shadow var(--zk-dur-base) var(--zk-ease-out);
+}
+
+.field + .field {
+  margin-top: 25px;
+}
+
+.field:hover {
+  border-color: #d3dded;
+}
+
+.field:focus-within {
+  border-color: var(--lp-blue);
+  box-shadow: 0 0 0 3px rgba(16, 104, 253, 0.12);
+}
+
+.field.has-error {
+  border-color: #f0a9b8;
+}
+
+.field-icon {
+  display: flex;
+  flex: 0 0 18px;
+  width: 18px;
+  height: 18px;
+  color: #8d9cb1;
+  transition: color var(--zk-dur-base) var(--zk-ease-out);
+}
+
+/* 聚焦时图标跟着主色亮起，和边框同一节奏 */
+.field:focus-within .field-icon {
+  color: var(--lp-blue);
+}
+
+.field-icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.field input {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 100%;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  font-family: inherit;
+  font-size: 16px;
+  color: #1b2740;
+  outline: none;
+}
+
+.field input::placeholder {
+  color: var(--lp-placeholder);
+}
+
+.field input:-webkit-autofill {
+  -webkit-box-shadow: 0 0 0 1000px #ffffff inset;
+  -webkit-text-fill-color: #1b2740;
+}
+
+.eye {
+  display: grid;
+  flex: 0 0 22px;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #9aa8bb;
+  cursor: pointer;
+  transition: color 160ms ease;
+}
+
+.eye:hover {
+  color: #63738c;
+}
+
+.eye svg {
+  grid-area: 1 / 1;
+  width: 20px;
+  height: 20px;
+}
+
+/* 密码小眼睛：切换时像眨一下眼，160ms 内完成（模仿 83 密码小眼睛） */
+.zk-eye-enter-active,
+.zk-eye-leave-active {
+  transition: opacity 160ms var(--zk-ease-out), transform 160ms var(--zk-ease-out);
+}
+
+.zk-eye-enter-from,
+.zk-eye-leave-to {
+  opacity: 0;
+  transform: scaleY(0.2);
+}
+
+/* 记住账号 / 忘记密码 */
+.helper-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 25px;
+}
+
+.remember {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 14px;
+  color: #4c586c;
+  cursor: pointer;
+  user-select: none;
+}
+
+.remember input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.checkbox {
+  display: grid;
+  flex: 0 0 19px;
+  place-items: center;
+  width: 19px;
+  height: 19px;
+  border: 1.5px solid #ccd6e3;
+  border-radius: 5px;
+  background: #ffffff;
+  color: #ffffff;
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease;
+}
+
+.checkbox svg {
+  width: 14px;
+  height: 14px;
+  opacity: 0;
+  transform: scale(0.7);
+  transition:
+    opacity 140ms ease,
+    transform 140ms ease;
+}
+
+.remember input:checked + .checkbox {
+  border-color: var(--lp-blue);
+  background: var(--lp-blue);
+}
+
+.remember input:checked + .checkbox svg {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.remember input:focus-visible + .checkbox {
+  box-shadow: 0 0 0 3px rgba(16, 104, 253, 0.18);
+}
+
+.link {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font-family: inherit;
+  font-size: 14px;
+  color: var(--lp-blue);
+  cursor: pointer;
+  transition: color 160ms ease;
+}
+
+.link:hover {
+  color: var(--lp-blue-deep);
+  text-decoration: underline;
+}
+
+/* 错误提示：常驻 34px 占位，出现时只滑下淡入，布局高度不变 */
+.error-slot {
+  position: relative;
+  height: 34px;
+}
+
+.form-error {
+  position: absolute;
+  top: 3px;
+  right: 0;
+  left: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 10px;
+  border: 1px solid #ffd6de;
+  border-radius: 9px;
+  background: #fff5f7;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: #c81e3c;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.form-error svg {
+  flex: 0 0 16px;
+  width: 16px;
+  height: 16px;
+}
+
+/* 提示固定单行，超出省略：保证错误区高度恒定，按钮不会被挤动 */
+.form-error span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.zk-err-enter-active {
+  transition: opacity var(--zk-dur-base) var(--zk-ease-out),
+    transform 220ms var(--zk-ease-out);
+}
+
+.zk-err-leave-active {
+  transition: opacity var(--zk-dur-fast) var(--zk-ease-in),
+    transform var(--zk-dur-fast) var(--zk-ease-in);
+}
+
+.zk-err-enter-from {
+  opacity: 0;
+  transform: translateY(-6px);
+}
+
+.zk-err-leave-to {
+  opacity: 0;
+  transform: translateY(-4px);
+}
+
+/* 登录按钮 */
+.submit {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  height: 49px;
+  margin-top: 6px;
+  padding: 0;
+  border: 0;
+  border-radius: 9px;
+  background: var(--lp-blue);
+  color: #ffffff;
+  font-family: inherit;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: 2px;
+  cursor: pointer;
+  box-shadow: 0 12px 24px -14px rgba(16, 104, 253, 0.9);
+  transition:
+    background-color 160ms ease,
+    box-shadow 160ms ease,
+    transform 120ms ease;
+}
+
+.submit:hover:not(:disabled) {
+  background: #0b5ce8;
+  box-shadow: 0 14px 28px -14px rgba(16, 104, 253, 0.95);
+}
+
+.submit:active:not(:disabled) {
+  background: #0a52cc;
+  transform: translateY(1px);
+}
+
+.submit:disabled {
+  cursor: not-allowed;
+  opacity: 0.72;
+  box-shadow: none;
+}
+
+/* 加载 / 成功属于主动反馈，不再压暗 */
+.submit.is-loading:disabled,
+.submit.is-success:disabled {
+  opacity: 1;
+}
+
+/* 提交按钮三连变：文字、转圈、对勾在同一格里切换，按钮尺寸始终不变 */
+.zk-submit-enter-active {
+  transition: opacity var(--zk-dur-fast) var(--zk-ease-out),
+    transform 180ms var(--zk-ease-spring);
+}
+
+.zk-submit-leave-active {
+  transition: opacity 110ms var(--zk-ease-in), transform 110ms var(--zk-ease-in);
+}
+
+.zk-submit-enter-from {
+  opacity: 0;
+  transform: translateY(6px);
+}
+
+.zk-submit-leave-to {
+  opacity: 0;
+  transform: translateY(-6px);
+}
+
+/* 成功：底色转绿，对勾用描边动画画出来（350ms） */
+.submit.is-success {
+  background: var(--zk-green);
+  box-shadow: none;
+}
+
+.submit-check {
+  width: 22px;
+  height: 22px;
+  color: #ffffff;
+}
+
+.submit-check path {
+  stroke-dasharray: 24;
+  stroke-dashoffset: 24;
+}
+
+.submit.is-success .submit-check path {
+  animation: zk-check-draw 350ms var(--zk-ease-out) forwards;
+}
+
+.spinner {
+  width: 15px;
+  height: 15px;
+  border: 2px solid rgba(255, 255, 255, 0.45);
+  border-top-color: #ffffff;
+  border-radius: 50%;
+  animation: lp-spin 700ms linear infinite;
+}
+
+/* 验证码登录：未开通短信通道的明确说明 */
+.gate {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 303px;
+  text-align: center;
+}
+
+.gate-icon {
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: rgba(16, 104, 253, 0.07);
+  color: var(--lp-blue);
+}
+
+.gate-icon svg {
+  width: 24px;
+  height: 24px;
+}
+
+.gate h3 {
+  margin-top: 16px;
+  font-size: 16px;
+  font-weight: 600;
+  color: #15233b;
+}
+
+.gate p {
+  margin-top: 10px;
+  max-width: 372px;
+  font-size: 13px;
+  line-height: 1.7;
+  color: #7b889c;
+}
+
+.gate-action {
+  margin-top: 18px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font-family: inherit;
+  font-size: 14px;
+  color: var(--lp-blue);
+  cursor: pointer;
+}
+
+.gate-action:hover {
+  color: var(--lp-blue-deep);
+  text-decoration: underline;
+}
+
+/* 其他登录方式 */
+.divider {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  margin-top: 40px;
+  font-size: 14px;
+  color: #97a3b5;
+  white-space: nowrap;
+}
+
+.divider::before,
+.divider::after {
+  content: '';
+  flex: 1 1 auto;
+  height: 1px;
+  background: #eef1f6;
+}
+
+.sso {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  margin: 21px auto 0;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(16, 104, 253, 0.06);
+  color: var(--lp-blue);
+  cursor: pointer;
+  transition:
+    background-color 160ms ease,
+    transform 160ms ease;
+}
+
+.sso:hover {
+  background: rgba(16, 104, 253, 0.12);
   transform: translateY(-1px);
 }
 
-.demo-chip:active {
-  transform: translateY(0);
+.sso-shield {
+  width: 22px;
+  height: 22px;
 }
 
-.demo-chip:focus-visible {
-  outline: 2px solid var(--zk-teal-dark);
-  outline-offset: 2px;
+.sso-label {
+  margin-top: 9px;
+  font-size: 13px;
+  line-height: 20px;
+  text-align: center;
+  color: #6d7b8e;
 }
 
-.login-form :deep(.el-input__wrapper) {
-  transition: box-shadow var(--zk-dur-fast) var(--zk-ease-out);
+.legal {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  margin-top: 30px;
+  padding-bottom: 64px;
+  font-size: 14px;
+  line-height: 22px;
+  color: #9aa6b8;
+  flex-wrap: wrap;
 }
 
-@media (max-width: 640px) {
-  .panel {
-    padding: 28px 20px;
-    align-items: flex-start;
+.legal .link {
+  font-size: 14px;
+}
+
+.legal-shield {
+  width: 15px;
+  height: 15px;
+  margin-right: 6px;
+  color: #9aa6b8;
+}
+
+/* ---------------- 动效偏好 ---------------- */
+@media (prefers-reduced-motion: reduce) {
+  .intro .brand,
+  .headline,
+  .subline,
+  .features,
+  .card {
+    animation: none;
   }
+  .spinner {
+    animation-duration: 1.4s;
+  }
+}
 
-  .panel-inner {
+/* ---------------- 响应式（必须与基础规则同处 scoped 块，否则选择器优先级不足） ---------------- */
+@media (max-width: 1440px) {
+  .login-shell {
+    padding: 0 64px 0 72px;
+  }
+  .auth {
+    flex-basis: 520px;
+  }
+  .card {
+    padding: 54px 44px 0;
+  }
+  .headline {
+    font-size: 40px;
+  }
+  .subline {
+    font-size: 19px;
+  }
+  .feature:nth-child(1) {
+    width: 178px;
+  }
+  .feature:nth-child(2) {
+    width: 164px;
+  }
+  .feature:nth-child(3) {
+    width: 156px;
+  }
+  .feature-desc {
+    white-space: normal;
+  }
+}
+
+@media (max-width: 1180px) {
+  .login-shell {
+    gap: 16px;
+    padding: 0 40px;
+  }
+  .auth {
+    flex-basis: 460px;
+    padding: 40px 0;
+  }
+  .card {
+    padding: 46px 36px 0;
+  }
+  .headline {
+    font-size: 34px;
+  }
+  .subline {
+    font-size: 17px;
+  }
+  .brand-mark {
+    width: 56px;
+    height: 56px;
+    flex-basis: 56px;
+  }
+  .brand-name {
+    font-size: 30px;
+  }
+  .features {
+    gap: 18px;
+  }
+  .feature:nth-child(n) {
+    flex: 1 1 0;
+    width: auto;
+  }
+  .tabs {
+    gap: 40px;
+  }
+}
+
+@media (max-width: 1023px) {
+  .login-shell {
+    justify-content: center;
+    padding: 32px 24px 40px;
+  }
+  .intro {
+    display: none;
+  }
+  .auth {
+    flex: 0 1 557px;
+    /* 允许收缩到容器宽，避免子元素 min-content 撑破小屏 */
+    min-width: 0;
+    width: 100%;
+    padding: 0;
+  }
+  .login-bg::before {
+    background-image: url('/login/login-bg-sm.webp');
+    background-position: center top;
+  }
+  .card {
+    padding: 46px 40px 0;
     max-width: 100%;
   }
-
-  .panel-head h2 {
-    font-size: 22px;
-  }
-
-  .demo-chips {
-    gap: 6px;
-  }
-
-  .demo-chip {
-    padding: 8px;
-  }
-
-  .hero-inner {
-    padding: 28px 22px;
+  .gate {
+    min-height: 280px;
   }
 }
 
-@media (max-width: 380px) {
-  .demo-chips {
-    grid-template-columns: minmax(0, 1fr);
+@media (max-width: 560px) {
+  .login-shell {
+    padding: 20px 16px 28px;
+  }
+  .card {
+    padding: 36px 22px 0;
+    border-radius: 12px;
+  }
+  .tabs {
+    gap: 32px;
+    min-width: 0;
+  }
+  .tab {
+    font-size: 18px;
+    line-height: 26px;
+    padding-bottom: 12px;
+  }
+  .form {
+    margin-top: 32px;
+  }
+  .helper-row {
+    flex-wrap: wrap;
+    gap: 10px;
+    min-width: 0;
+  }
+  .field {
+    gap: 14px;
+  }
+  .field input {
+    font-size: 15px;
+  }
+  .divider {
+    margin-top: 30px;
+  }
+  .legal {
+    padding-bottom: 40px;
+    font-size: 13px;
+    line-height: 20px;
+    min-width: 0;
+  }
+  .legal .link {
+    font-size: 13px;
   }
 }
+
+/* ---------------- 弹层（telegraphed 到 body，样式为全局） ---------------- */
+</style>
+
+<style>
+.zk-login-dialog.el-dialog {
+  border-radius: 12px;
+  padding: 8px 4px 4px;
+}
+
+.zk-login-dialog .el-dialog__title {
+  font-size: 17px;
+  font-weight: 600;
+  color: #15233b;
+}
+
+.zk-login-dialog__body p {
+  margin: 0 0 10px;
+  font-size: 13.5px;
+  line-height: 1.85;
+  color: #5b6779;
+}
+
+.zk-login-dialog__body p:last-child {
+  margin-bottom: 0;
+}
+
+.zk-login-dialog__ok {
+  height: 36px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: 8px;
+  background: #1068fd;
+  color: #fff;
+  font-family: inherit;
+  font-size: 13.5px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.zk-login-dialog__ok:hover {
+  background: #0b5ce8;
+}
+
+/* ---------------- 动效 ---------------- */
+@keyframes lp-rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes lp-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 </style>

@@ -9,11 +9,9 @@ import com.zhiketong.common.ResultCode;
 import com.zhiketong.dto.UserVO;
 import com.zhiketong.entity.ChatSession;
 import com.zhiketong.entity.SysUser;
-import com.zhiketong.entity.WorkOrder;
 import com.zhiketong.enums.SessionStatus;
 import com.zhiketong.mapper.ChatSessionMapper;
 import com.zhiketong.mapper.SysUserMapper;
-import com.zhiketong.mapper.WorkOrderMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -39,7 +37,6 @@ public class UserPortalService {
             Arrays.asList(SessionStatus.HUMAN.getCode(), SessionStatus.CLOSED.getCode());
 
     private final ChatSessionMapper chatSessionMapper;
-    private final WorkOrderMapper workOrderMapper;
     private final SysUserMapper sysUserMapper;
 
     /**
@@ -75,44 +72,6 @@ public class UserPortalService {
             item.put("createTime", session.getCreateTime());
             item.put("acceptTime", session.getAcceptTime());
             item.put("endTime", session.getEndTime());
-            list.add(item);
-        }
-        return PageResult.of(page, list);
-    }
-
-    /**
-     * 我的工单分页：USER 按 creator_id 过滤；AGENT 按 assignee_id 过滤。
-     *
-     * @param userId   当前登录用户 ID
-     * @param roleCode 当前登录用户角色编码
-     * @param pageNum  页码，从 1 开始
-     * @param pageSize 每页条数，1~100
-     * @return 工单分页数据
-     */
-    @Transactional(readOnly = true)
-    public PageResult<Map<String, Object>> pageMyOrders(Long userId, String roleCode,
-                                                        int pageNum, int pageSize) {
-        LambdaQueryWrapper<WorkOrder> wrapper = new LambdaQueryWrapper<>();
-        if (Constants.ROLE_AGENT.equals(roleCode)) {
-            wrapper.eq(WorkOrder::getAssigneeId, userId);
-        } else {
-            wrapper.eq(WorkOrder::getCreatorId, userId);
-        }
-        wrapper.orderByDesc(WorkOrder::getId);
-
-        Page<WorkOrder> page = workOrderMapper.selectPage(new Page<>(pageNum, pageSize), wrapper);
-        List<Map<String, Object>> list = new ArrayList<>(page.getRecords().size());
-        for (WorkOrder order : page.getRecords()) {
-            Map<String, Object> item = new LinkedHashMap<>();
-            item.put("id", order.getId());
-            item.put("orderNo", order.getOrderNo());
-            item.put("title", order.getTitle());
-            item.put("status", order.getStatus());
-            item.put("priority", order.getPriority());
-            item.put("source", order.getSource());
-            item.put("createTime", order.getCreateTime());
-            item.put("slaDeadline", order.getSlaDeadline());
-            item.put("overdueFlag", order.getOverdueFlag());
             list.add(item);
         }
         return PageResult.of(page, list);

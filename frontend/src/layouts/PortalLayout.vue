@@ -5,14 +5,23 @@
     <header class="portal-header">
       <div class="header-inner">
         <router-link :to="homePath" class="brand" :aria-label="`${brandTitle}首页`">
-          <span class="brand-logo" aria-hidden="true">智</span>
+          <span class="brand-logo" aria-hidden="true">
+            <img src="/brand-mark.png" alt="" />
+          </span>
           <span class="brand-text">
             <span class="brand-name">{{ brandTitle }}</span>
             <span class="brand-sub">{{ brandSub }}</span>
           </span>
         </router-link>
 
-        <nav class="portal-nav" aria-label="主要导航">
+        <nav ref="navRef" class="portal-nav" aria-label="主要导航">
+          <!-- 流动指示器：横向选中底片，只靠 transform 位移与缩放（不动 width） -->
+          <span
+            class="nav-pill"
+            :class="{ 'is-ready': pillReady }"
+            :style="pillStyle"
+            aria-hidden="true"
+          />
           <router-link
             v-for="item in navItems"
             :key="item.path"
@@ -35,7 +44,7 @@
             :title="healthTitle"
             :aria-label="healthTitle"
           >
-            <i class="health-dot" aria-hidden="true" />
+            <i class="health-dot" :class="{ 'zk-dot-live': health.status === 'loading' }" aria-hidden="true" />
             <span class="health-text">{{ healthText }}</span>
           </div>
 
@@ -54,7 +63,7 @@
                   {{ user?.username }} · {{ roleLabel }}
                 </el-dropdown-item>
                 <el-dropdown-item command="home" divided>
-                  <el-icon><HomeFilled /></el-icon> {{ portalKind === 'agent' ? '坐席工作台' : '用户首页' }}
+                  <el-icon><House /></el-icon> {{ portalKind === 'agent' ? '坐席工作台' : '用户首页' }}
                 </el-dropdown-item>
                 <el-dropdown-item v-if="portalKind === 'user'" command="profile">
                   <el-icon><User /></el-icon> 个人资料
@@ -68,7 +77,7 @@
 
           <button
             type="button"
-            class="menu-btn"
+            class="menu-btn zk-press"
             aria-label="打开导航菜单"
             :aria-expanded="mobileOpen"
             aria-controls="portal-drawer"
@@ -118,7 +127,7 @@
 </template>
 
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import {
@@ -130,13 +139,13 @@ import {
   DataAnalysis,
   Document,
   Headset,
-  HomeFilled,
+  House,
   Menu,
   SwitchButton,
   Tickets,
   User
 } from '@element-plus/icons-vue'
-import { getHealth } from '@/api'
+import { getHealth, logout as logoutApi } from '@/api'
 import { clearAuth, getUser } from '@/api/http'
 import { ROLE_DICT, dictLabel } from '@/utils/dict'
 
@@ -174,7 +183,7 @@ const iconMap = {
   User,
   Avatar,
   Document,
-  HomeFilled
+  House
 }
 const iconOf = (name) => iconMap[name] || DataAnalysis
 
@@ -191,6 +200,37 @@ const navItems = computed(() => {
     }))
 })
 
+/* ---------- 流动指示器：横向底片跟随当前导航项 ---------- */
+const navRef = ref(null)
+const pillStyle = ref({ opacity: 0 })
+const pillReady = ref(false)
+// 底片的基准宽度：真实宽度用 scaleX 表达，避免过渡 width 触发排版
+const PILL_BASE = 100
+
+function measurePill() {
+  const nav = navRef.value
+  if (!nav) return
+  const active = nav.querySelector('.nav-item.is-active')
+  if (!active) {
+    pillStyle.value = { ...pillStyle.value, opacity: 0 }
+    return
+  }
+  pillStyle.value = {
+    height: `${active.offsetHeight}px`,
+    transform: `translate3d(${active.offsetLeft}px, ${active.offsetTop}px, 0) scaleX(${
+      active.offsetWidth / PILL_BASE
+    })`,
+    opacity: 1
+  }
+}
+
+watch(
+  () => route.path,
+  () => nextTick(measurePill)
+)
+
+watch(navItems, () => nextTick(measurePill))
+
 /* ---------- 健康状态（简化） ---------- */
 const health = ref({ status: 'loading' })
 const healthTone = computed(() => {
@@ -200,10 +240,10 @@ const healthTone = computed(() => {
 })
 const healthText = computed(() => {
   if (health.value.status === 'loading') return '检测中'
-  return health.value.status === 'UP' ? '系统正常' : '后端离线'
+  return health.value.status === 'UP' ? '系统正常' : '服务离线'
 })
 const healthTitle = computed(() =>
-  health.value.status === 'UP' ? '后端服务正常' : '后端服务未连接'
+  health.value.status === 'UP' ? '服务运行正常' : '服务未连接'
 )
 let healthTimer = null
 
@@ -220,6 +260,8 @@ async function loadHealth() {
 function onCommand(command) {
   mobileOpen.value = false
   if (command === 'logout') {
+    // 同步注销后端登录态，接口失败也允许本地退出
+    logoutApi().catch(() => {})
     clearAuth()
     ElMessage.success('已退出登录')
     router.replace({ name: 'login' })
@@ -248,10 +290,21 @@ watch(mobileOpen, (open) => {
 onMounted(() => {
   loadHealth()
   healthTimer = window.setInterval(loadHealth, 60000)
+  // 首屏先定位、等一帧真正画上去后再开过渡，避免底片从左侧滑入
+  nextTick(() => {
+    measurePill()
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        pillReady.value = true
+      })
+    })
+  })
+  window.addEventListener('resize', measurePill)
 })
 
 onBeforeUnmount(() => {
   if (healthTimer) window.clearInterval(healthTimer)
+  window.removeEventListener('resize', measurePill)
   document.body.style.overflow = ''
 })
 </script>
@@ -269,74 +322,98 @@ onBeforeUnmount(() => {
   position: sticky;
   top: 0;
   z-index: var(--zk-z-topbar, 20);
-  background: rgba(255, 255, 255, 0.92);
-  backdrop-filter: blur(10px);
+  background: var(--zk-surface);
   border-bottom: 1px solid var(--zk-border);
 }
 
 .header-inner {
   width: 100%;
-  max-width: 1480px;
+  max-width: 1440px;
   margin: 0 auto;
-  height: 68px;
-  padding: 0 28px;
+  height: 58px;
+  padding: 0 24px;
   display: flex;
   align-items: center;
-  gap: 24px;
+  gap: 20px;
 }
 
 .brand {
   display: inline-flex;
   align-items: center;
-  gap: 11px;
+  gap: 9px;
   min-width: 0;
-  border-radius: 10px;
+  border-radius: 6px;
 }
 
 .brand-logo {
-  width: 36px;
-  height: 36px;
-  flex: 0 0 36px;
-  border-radius: 11px;
+  width: 26px;
+  height: 26px;
+  flex: 0 0 26px;
+  border-radius: var(--zk-radius);
   display: grid;
   place-items: center;
-  font-size: 16px;
-  font-weight: 700;
-  color: #ffffff;
-  background: linear-gradient(140deg, #14b8a6 0%, #0ea5a4 45%, #4f46e5 100%);
-  box-shadow: 0 8px 18px -10px rgba(20, 184, 166, 0.9);
+  overflow: hidden;
+  background: var(--zk-surface);
+}
+
+.brand-logo img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
 }
 
 .brand-text {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 1px;
   min-width: 0;
 }
 
 .brand-name {
-  font-size: 14.5px;
-  font-weight: 700;
-  letter-spacing: -0.2px;
+  font-size: 13.5px;
+  font-weight: 600;
+  letter-spacing: 0;
   color: var(--zk-text);
   white-space: nowrap;
 }
 
 .brand-sub {
   font-size: 10.5px;
-  letter-spacing: 0.6px;
+  letter-spacing: 0;
   color: var(--zk-text-3);
 }
 
-/* 横向导航 */
+/* 横向导航：中性选中态，不抢内容 */
 .portal-nav {
   display: flex;
   align-items: center;
-  gap: 2px;
+  gap: 1px;
   min-width: 0;
   flex: 1;
   overflow-x: auto;
   scrollbar-width: none;
+  position: relative;
+}
+
+/* 流动指示器：横向底片，用 scaleX 表达宽度，只过渡 transform / opacity */
+.nav-pill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100px;
+  height: 32px;
+  border-radius: var(--zk-radius-sm);
+  background: var(--zk-surface-3);
+  transform-origin: left center;
+  pointer-events: none;
+  opacity: 0;
+  will-change: transform;
+}
+
+.nav-pill.is-ready {
+  transition: transform var(--zk-dur-slow) var(--zk-ease-emphasis),
+    opacity var(--zk-dur-base) var(--zk-ease-out);
 }
 
 .portal-nav::-webkit-scrollbar {
@@ -344,13 +421,14 @@ onBeforeUnmount(() => {
 }
 
 .nav-item {
+  position: relative;
   display: inline-flex;
   align-items: center;
-  gap: 7px;
-  height: 44px;
-  padding: 0 14px;
-  border-radius: 10px;
-  font-size: 13.5px;
+  gap: 6px;
+  height: 32px;
+  padding: 0 10px;
+  border-radius: var(--zk-radius-sm);
+  font-size: 13px;
   font-weight: 500;
   color: var(--zk-text-2);
   white-space: nowrap;
@@ -359,18 +437,23 @@ onBeforeUnmount(() => {
 }
 
 .nav-item:hover {
-  background: var(--zk-surface-2);
+  background: var(--zk-surface-3);
   color: var(--zk-text);
 }
 
 .nav-item.is-active {
-  color: var(--zk-indigo-dark);
-  background: var(--zk-indigo-soft);
-  box-shadow: inset 0 0 0 1px var(--zk-indigo-line);
+  color: var(--zk-text);
+  background: transparent;
+  box-shadow: none;
+}
+
+.nav-item.is-active .nav-icon {
+  color: var(--zk-accent);
 }
 
 .nav-icon {
-  font-size: 16px;
+  font-size: 14px;
+  color: var(--zk-text-3);
 }
 
 /* 右侧 */
@@ -386,48 +469,51 @@ onBeforeUnmount(() => {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  height: 30px;
-  padding: 0 11px;
+  height: 26px;
+  padding: 0 2px;
   border-radius: 999px;
   font-size: 12px;
-  font-weight: 600;
-  border: 1px solid;
+  font-weight: 400;
+  border: 0;
+  color: var(--zk-text-3);
   white-space: nowrap;
 }
 
 .health-chip.teal {
-  color: var(--zk-teal-deep);
-  background: var(--zk-teal-soft);
-  border-color: var(--zk-teal-line);
+  color: var(--zk-text-2);
 }
 
 .health-chip.red {
   color: var(--zk-red);
-  background: var(--zk-red-soft);
-  border-color: var(--zk-red-line);
 }
 
 .health-chip.slate {
   color: var(--zk-text-3);
-  background: var(--zk-surface-2);
-  border-color: var(--zk-border);
 }
 
 .health-dot {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: currentColor;
+  background: #10b981;
+}
+
+.health-chip.red .health-dot {
+  background: #f43f5e;
+}
+
+.health-chip.slate .health-dot {
+  background: #a1a1aa;
 }
 
 .user-trigger {
   display: inline-flex;
   align-items: center;
-  gap: 9px;
-  height: 44px;
-  padding: 0 8px;
+  gap: 8px;
+  height: 34px;
+  padding: 0 4px;
   border: 0;
-  border-radius: 10px;
+  border-radius: var(--zk-radius-sm);
   background: transparent;
   cursor: pointer;
   font: inherit;
@@ -435,20 +521,20 @@ onBeforeUnmount(() => {
 }
 
 .user-trigger:hover {
-  background: var(--zk-surface-2);
+  background: var(--zk-surface-3);
 }
 
 .avatar {
-  width: 32px;
-  height: 32px;
-  flex: 0 0 32px;
-  border-radius: 10px;
+  width: 26px;
+  height: 26px;
+  flex: 0 0 26px;
+  border-radius: 6px;
   display: grid;
   place-items: center;
-  font-size: 12px;
-  font-weight: 700;
+  font-size: 11px;
+  font-weight: 600;
   color: #ffffff;
-  background: linear-gradient(140deg, #4f46e5, #14b8a6);
+  background: var(--zk-ink-800);
 }
 
 .user-meta {
@@ -461,7 +547,7 @@ onBeforeUnmount(() => {
 
 .user-name {
   font-size: 12.5px;
-  font-weight: 600;
+  font-weight: 500;
   color: var(--zk-text);
   max-width: 120px;
   overflow: hidden;
@@ -475,21 +561,25 @@ onBeforeUnmount(() => {
 }
 
 .caret {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--zk-text-3);
 }
 
 .menu-btn {
   display: none;
-  width: 44px;
-  height: 44px;
+  width: 34px;
+  height: 34px;
   align-items: center;
   justify-content: center;
-  border: 1px solid var(--zk-border);
-  border-radius: 10px;
-  background: var(--zk-surface);
+  border: 0;
+  border-radius: var(--zk-radius-sm);
+  background: transparent;
   color: var(--zk-text-2);
   cursor: pointer;
+}
+
+.menu-btn:hover {
+  background: var(--zk-surface-3);
 }
 
 .portal-main {
@@ -501,17 +591,17 @@ onBeforeUnmount(() => {
 .drawer-nav {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
 }
 
 .drawer-link {
   display: flex;
   align-items: center;
-  gap: 10px;
-  min-height: 48px;
-  padding: 0 14px;
-  border-radius: 10px;
-  font-size: 14px;
+  gap: 9px;
+  min-height: 40px;
+  padding: 0 10px;
+  border-radius: var(--zk-radius-sm);
+  font-size: 13px;
   font-weight: 500;
   color: var(--zk-text-2);
   background: transparent;
@@ -523,12 +613,12 @@ onBeforeUnmount(() => {
 }
 
 .drawer-link:hover {
-  background: var(--zk-surface-2);
+  background: var(--zk-surface-3);
 }
 
 .drawer-link.is-active {
-  color: var(--zk-indigo-dark);
-  background: var(--zk-indigo-soft);
+  color: var(--zk-accent-hover);
+  background: var(--zk-accent-soft);
 }
 
 .drawer-divider {
@@ -552,7 +642,7 @@ onBeforeUnmount(() => {
   }
 
   .brand-name {
-    font-size: 13.5px;
+    font-size: 13px;
   }
 
   .user-meta {
@@ -562,9 +652,9 @@ onBeforeUnmount(() => {
 
 @media (max-width: 640px) {
   .header-inner {
-    padding: 0 16px;
-    gap: 12px;
-    height: 62px;
+    padding: 0 14px;
+    gap: 10px;
+    height: 54px;
   }
 
   .brand-sub {
@@ -573,10 +663,6 @@ onBeforeUnmount(() => {
 
   .health-text {
     display: none;
-  }
-
-  .health-chip {
-    padding: 0 9px;
   }
 }
 </style>

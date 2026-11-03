@@ -3,6 +3,7 @@ import { clearAuth, getToken, getUser } from '@/api/http'
 
 /** 角色默认落地页：登录成功、访问根路径、未知路径都走这里 */
 export const ROLE_HOME = {
+  PLATFORM_ADMIN: '/platform/tenants',
   ADMIN: '/admin/dashboard',
   AGENT: '/agent/workbench',
   USER: '/user/home'
@@ -16,7 +17,7 @@ const roleHome = () => roleHomePath(getUser()?.roleCode)
 const legacyRedirect = (legacyPath) => () => {
   const roleCode = getUser()?.roleCode
   const map = {
-    '/dashboard': { ADMIN: '/admin/dashboard' },
+    '/dashboard': { ADMIN: '/admin/dashboard', PLATFORM_ADMIN: '/platform/tenants' },
     '/sessions': {
       ADMIN: '/admin/sessions',
       AGENT: '/agent/sessions',
@@ -35,12 +36,14 @@ const legacyRedirect = (legacyPath) => () => {
     },
     '/chat': {
       ADMIN: '/admin/dashboard',
-      AGENT: '/agent/chat',
+      AGENT: '/agent/sessions',
       USER: '/user/chat'
     },
     '/users': { ADMIN: '/admin/users' },
     '/roles': { ADMIN: '/admin/roles' },
-    '/login-logs': { ADMIN: '/admin/login-logs' }
+    '/login-logs': { ADMIN: '/admin/login-logs' },
+    '/statistics': { ADMIN: '/admin/statistics' },
+    '/settings': { ADMIN: '/admin/settings' }
   }
   return map[legacyPath]?.[roleCode] || roleHomePath(roleCode)
 }
@@ -60,6 +63,48 @@ const adminRoutes = [
       icon: 'DataAnalysis',
       group: '运营',
       order: 1,
+      roles: ['ADMIN']
+    }
+  },
+  {
+    path: 'screen',
+    name: 'admin-screen',
+    component: () => import('@/views/OpsScreen.vue'),
+    meta: {
+      title: '实时大屏',
+      short: '大屏',
+      subtitle: '排队人数、排队时长与坐席负载实时推送',
+      icon: 'Monitor',
+      group: '运营',
+      order: 1.5,
+      roles: ['ADMIN']
+    }
+  },
+  {
+    path: 'plan',
+    name: 'admin-plan',
+    component: () => import('@/views/Plan.vue'),
+    meta: {
+      title: '套餐与用量',
+      short: '套餐',
+      subtitle: '本月额度水位 · 近 30 天服务结果 · 套餐对比',
+      icon: 'Wallet',
+      group: '运营',
+      order: 2,
+      roles: ['ADMIN']
+    }
+  },
+  {
+    path: 'statistics',
+    name: 'admin-statistics',
+    component: () => import('@/views/Statistics.vue'),
+    meta: {
+      title: '数据统计',
+      short: '统计',
+      subtitle: '服务量、工单分布、知识命中与坐席效率多维分析',
+      icon: 'DataLine',
+      group: '运营',
+      order: 3,
       roles: ['ADMIN']
     }
   },
@@ -106,6 +151,90 @@ const adminRoutes = [
     }
   },
   {
+    path: 'monitor',
+    name: 'admin-monitor',
+    component: () => import('@/views/Monitor.vue'),
+    meta: {
+      title: '会话监听',
+      short: '监听',
+      subtitle: '实时巡视进行中会话 · 强插 / 接管 / 改派',
+      icon: 'Position',
+      group: '服务',
+      order: 4.55,
+      roles: ['ADMIN']
+    }
+  },
+  {
+    path: 'skill-groups',
+    name: 'admin-skill-groups',
+    component: () => import('@/views/SkillGroups.vue'),
+    meta: {
+      title: '技能组',
+      short: '技能组',
+      subtitle: '按业务技能划分坐席 · 转人工咨询类型与分配',
+      icon: 'UserFilled',
+      group: '服务',
+      order: 4.6,
+      roles: ['ADMIN']
+    }
+  },
+  {
+    path: 'quick-replies',
+    name: 'admin-quick-replies',
+    component: () => import('@/views/QuickReplies.vue'),
+    meta: {
+      title: '快捷回复话术',
+      short: '话术',
+      subtitle: '公共话术维护 · 坐席一键引用',
+      icon: 'ChatLineRound',
+      group: '服务',
+      order: 4.7,
+      roles: ['ADMIN']
+    }
+  },
+  {
+    path: 'order-forms',
+    name: 'admin-order-forms',
+    component: () => import('@/views/OrderForms.vue'),
+    meta: {
+      title: '工单表单',
+      short: '表单',
+      subtitle: '自定义字段与工单模板 · 结构化建单',
+      icon: 'Grid',
+      group: '服务',
+      order: 4.8,
+      roles: ['ADMIN']
+    }
+  },
+  {
+    path: 'sla-policies',
+    name: 'admin-sla-policies',
+    component: () => import('@/views/SlaPolicies.vue'),
+    meta: {
+      title: 'SLA 时效策略',
+      short: 'SLA',
+      subtitle: '按优先级配置三级时限 · 预警阈值与超时升级',
+      icon: 'Timer',
+      group: '服务',
+      order: 4.9,
+      roles: ['ADMIN']
+    }
+  },
+  {
+    path: 'order-rules',
+    name: 'admin-order-rules',
+    component: () => import('@/views/OrderRules.vue'),
+    meta: {
+      title: '工单规则与自动化',
+      short: '规则',
+      subtitle: '自动分配 / 事件触发器 / 时间自动化 · 命中即执行并留痕',
+      icon: 'SetUp',
+      group: '服务',
+      order: 4.95,
+      roles: ['ADMIN']
+    }
+  },
+  {
     path: 'knowledge',
     name: 'admin-knowledge',
     component: () => import('@/views/Knowledge.vue'),
@@ -116,6 +245,104 @@ const adminRoutes = [
       icon: 'Collection',
       group: '知识',
       order: 5,
+      roles: ['ADMIN']
+    }
+  },
+  {
+    path: 'kb-ops',
+    name: 'admin-kb-ops',
+    component: () => import('@/views/KbOps.vue'),
+    meta: {
+      title: '知识运营',
+      short: '知识运营',
+      subtitle: '未命中闭环 · 健康度 · 查重冲突 · 知识包导入',
+      icon: 'DataAnalysis',
+      group: '知识',
+      order: 5.5,
+      roles: ['ADMIN']
+    }
+  },
+  {
+    path: 'voc',
+    name: 'admin-voc',
+    component: () => import('@/views/Voc.vue'),
+    meta: {
+      title: '客户之声',
+      short: '客户之声',
+      subtitle: '未命中问法聚类 · 热点话题 · 访客词云',
+      icon: 'Opportunity',
+      group: '知识',
+      order: 5.55,
+      roles: ['ADMIN']
+    }
+  },
+  {
+    path: 'quality',
+    name: 'admin-quality',
+    component: () => import('@/views/Quality.vue'),
+    meta: {
+      title: '智能质检',
+      short: '质检',
+      subtitle: '全量自动质检 · 评分卡与合格率',
+      icon: 'Aim',
+      group: '质量',
+      order: 5.6,
+      roles: ['ADMIN']
+    }
+  },
+  {
+    path: 'quality-rules',
+    name: 'admin-quality-rules',
+    component: () => import('@/views/QualityRules.vue'),
+    meta: {
+      title: '质检规则',
+      short: '质检规则',
+      subtitle: '语义 / 情感 / 服务规范 / 敏感词四类规则',
+      icon: 'SetUp',
+      group: '质量',
+      order: 5.65,
+      roles: ['ADMIN']
+    }
+  },
+  {
+    path: 'alerts',
+    name: 'admin-alerts',
+    component: () => import('@/views/Alerts.vue'),
+    meta: {
+      title: '告警中心',
+      short: '告警',
+      subtitle: '待处理告警 · 确认闭环 · 手动扫描',
+      icon: 'Bell',
+      group: '质量',
+      order: 5.7,
+      roles: ['ADMIN']
+    }
+  },
+  {
+    path: 'alert-rules',
+    name: 'admin-alert-rules',
+    component: () => import('@/views/AlertRules.vue'),
+    meta: {
+      title: '告警规则',
+      short: '告警规则',
+      subtitle: '指标阈值 / 冷却 / 通知对象可配置',
+      icon: 'AlarmClock',
+      group: '质量',
+      order: 5.75,
+      roles: ['ADMIN']
+    }
+  },
+  {
+    path: 'embed',
+    name: 'admin-embed',
+    component: () => import('@/views/Embed.vue'),
+    meta: {
+      title: '接入方式',
+      short: '接入',
+      subtitle: '网页悬浮球 / 独立链接 / API 对接',
+      icon: 'Connection',
+      group: '接入',
+      order: 4.5,
       roles: ['ADMIN']
     }
   },
@@ -141,7 +368,7 @@ const adminRoutes = [
       title: '角色管理',
       short: '角色',
       subtitle: 'V1.0 固定三角色 · 角色仅用于分配用户',
-      icon: 'Avatar',
+      icon: 'Key',
       group: '系统',
       order: 7,
       roles: ['ADMIN']
@@ -158,6 +385,48 @@ const adminRoutes = [
       icon: 'Document',
       group: '系统',
       order: 8,
+      roles: ['ADMIN']
+    }
+  },
+  {
+    path: 'audit-logs',
+    name: 'admin-audit-logs',
+    component: () => import('@/views/AuditLogs.vue'),
+    meta: {
+      title: '操作审计',
+      short: '审计',
+      subtitle: '本租户写操作留痕 · 变更前后值可追溯',
+      icon: 'Memo',
+      group: '系统',
+      order: 8.5,
+      roles: ['ADMIN']
+    }
+  },
+  {
+    path: 'ai-models',
+    name: 'admin-ai-models',
+    component: () => import('@/views/AiModels.vue'),
+    meta: {
+      title: '大模型配置',
+      short: '大模型',
+      subtitle: '多平台接入 · 默认模型切换 · 连通性测试',
+      icon: 'Cpu',
+      group: '系统',
+      order: 9,
+      roles: ['ADMIN']
+    }
+  },
+  {
+    path: 'settings',
+    name: 'admin-settings',
+    component: () => import('@/views/SystemSettings.vue'),
+    meta: {
+      title: '系统设置',
+      short: '设置',
+      subtitle: '账号安全、接待参数与运行状态',
+      icon: 'Setting',
+      group: '系统',
+      order: 10,
       roles: ['ADMIN']
     }
   }
@@ -210,31 +479,65 @@ const agentRoutes = [
     }
   },
   {
+    path: 'alerts',
+    name: 'agent-alerts',
+    component: () => import('@/views/AgentAlerts.vue'),
+    meta: {
+      title: '我的告警',
+      short: '告警',
+      subtitle: '本人会话告警事件与个人告警规则',
+      icon: 'Bell',
+      group: '坐席',
+      order: 5,
+      roles: ['AGENT']
+    }
+  },
+  {
     path: 'knowledge',
     name: 'agent-knowledge',
     component: () => import('@/views/Knowledge.vue'),
     meta: {
       title: '知识库',
       short: '知识库',
-      subtitle: '标准问答条目查询 · 命中次数排行',
+      subtitle: '标准问答条目维护 · 命中测试与命中排行',
       icon: 'Collection',
       group: '知识',
       order: 4,
       roles: ['AGENT']
     }
+  }
+]
+
+/* =========================================================
+   /platform 平台运营端（PLATFORM_ADMIN，S4-B）
+   ========================================================= */
+const platformRoutes = [
+  {
+    path: 'tenants',
+    name: 'platform-tenants',
+    component: () => import('@/views/PlatformTenants.vue'),
+    meta: {
+      title: '租户与套餐',
+      short: '租户',
+      subtitle: '开通租户 · 套餐额度 · 用量水位',
+      icon: 'OfficeBuilding',
+      group: '平台',
+      order: 1,
+      roles: ['PLATFORM_ADMIN']
+    }
   },
   {
-    path: 'chat',
-    name: 'agent-chat',
-    component: () => import('@/views/Chat.vue'),
+    path: 'audit-logs',
+    name: 'platform-audit-logs',
+    component: () => import('@/views/AuditLogs.vue'),
     meta: {
-      title: 'AI 咨询',
-      short: 'AI 咨询',
-      subtitle: '体验 AI 知识库应答与降级话术',
-      icon: 'ChatDotRound',
-      group: '服务',
-      order: 5,
-      roles: ['AGENT']
+      title: '操作审计',
+      short: '审计',
+      subtitle: '跨租户写操作留痕 · 谁在何时改了什么',
+      icon: 'Memo',
+      group: '平台',
+      order: 2,
+      roles: ['PLATFORM_ADMIN']
     }
   }
 ]
@@ -251,7 +554,7 @@ const userRoutes = [
       title: '首页',
       short: '首页',
       subtitle: '我的会话与工单概览',
-      icon: 'HomeFilled',
+      icon: 'House',
       group: '用户',
       order: 1,
       roles: ['USER']
@@ -337,10 +640,29 @@ const routes = [
     meta: { public: true, title: '登录' }
   },
   {
+    path: '/embed/chat',
+    name: 'embed-chat',
+    component: () => import('@/views/EmbedChat.vue'),
+    meta: { public: true, title: '在线客服' }
+  },
+  {
+    path: '/embed/demo',
+    name: 'embed-demo',
+    component: () => import('@/views/EmbedDemo.vue'),
+    meta: { public: true, title: '接入演示' }
+  },
+  {
     path: '/403',
     name: 'forbidden',
     component: () => import('@/views/Forbidden.vue'),
     meta: { title: '无权访问' }
+  },
+  {
+    path: '/platform',
+    component: () => import('@/layouts/AdminLayout.vue'),
+    redirect: '/platform/tenants',
+    meta: { roles: ['PLATFORM_ADMIN'], portalKind: 'platform' },
+    children: platformRoutes
   },
   {
     path: '/admin',
@@ -374,6 +696,8 @@ const routes = [
   { path: '/users', redirect: legacyRedirect('/users') },
   { path: '/roles', redirect: legacyRedirect('/roles') },
   { path: '/login-logs', redirect: legacyRedirect('/login-logs') },
+  { path: '/statistics', redirect: legacyRedirect('/statistics') },
+  { path: '/settings', redirect: legacyRedirect('/settings') },
 
   { path: '/', redirect: roleHome },
   { path: '/:pathMatch(.*)*', redirect: roleHome }

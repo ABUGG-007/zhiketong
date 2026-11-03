@@ -19,6 +19,8 @@ public class UserVO implements Serializable {
     private String nickname;
     private String roleCode;
     private String roleName;
+    /** 租户 ID（平台管理员为 0） */
+    private Long tenantId;
     private String phone;
     private String email;
     private String avatar;
@@ -40,6 +42,7 @@ public class UserVO implements Serializable {
         vo.setUsername(user.getUsername());
         vo.setNickname(user.getNickname());
         vo.setRoleCode(user.getRoleCode());
+        vo.setTenantId(user.getTenantId());
         vo.setPhone(user.getPhone());
         vo.setEmail(user.getEmail());
         vo.setAvatar(user.getAvatar());
@@ -61,6 +64,9 @@ public class UserVO implements Serializable {
         }
         if ("USER".equals(roleCode)) {
             return "普通用户";
+        }
+        if ("PLATFORM_ADMIN".equals(roleCode)) {
+            return "平台管理员";
         }
         return roleCode;
     }

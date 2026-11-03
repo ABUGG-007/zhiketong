@@ -2,24 +2,30 @@
   <div class="shell" :class="{ collapsed, 'is-mobile-open': mobileOpen }">
     <a class="zk-skip-link" href="#main-content">跳到主内容</a>
 
-    <div
-      v-if="mobileOpen"
-      class="sidebar-overlay"
-      aria-hidden="true"
-      @click="closeMobile"
-    />
+    <transition name="zk-overlay">
+      <div
+        v-if="mobileOpen"
+        class="sidebar-overlay"
+        aria-hidden="true"
+        @click="closeMobile"
+      />
+    </transition>
 
     <aside id="app-sidebar" class="sidebar" aria-label="主导航">
       <div class="brand">
-        <div class="brand-logo" aria-hidden="true">智</div>
-        <div v-if="!collapsed || mobileOpen" class="brand-text">
-          <div class="brand-name">智客通</div>
-          <div class="brand-sub">管理控制台</div>
+        <div class="brand-logo" aria-hidden="true">
+          <img src="/brand-mark.png" alt="" />
         </div>
+        <transition name="zk-nav">
+          <div v-if="!collapsed || mobileOpen" class="brand-text">
+            <div class="brand-name">智客通</div>
+            <div class="brand-sub">{{ isPlatform ? '平台运营控制台' : '管理控制台' }}</div>
+          </div>
+        </transition>
         <button
           v-if="mobileOpen"
           type="button"
-          class="sidebar-close"
+          class="sidebar-close zk-press"
           aria-label="关闭导航菜单"
           @click="closeMobile"
         >
@@ -27,11 +33,21 @@
         </button>
       </div>
 
-      <nav class="nav" aria-label="功能菜单">
+      <nav ref="navRef" class="nav" aria-label="功能菜单" v-reveal.group>
+        <!-- 流动指示器：选中底色是一块绝对定位的 pill，随当前项 transform 滑动（模仿水滴导航的跟随感） -->
+        <span
+          class="nav-pill"
+          :class="{ 'is-ready': pillReady }"
+          :style="pillStyle"
+          data-zk-reveal="off"
+          aria-hidden="true"
+        />
         <div v-for="group in groups" :key="group.name" class="nav-group">
-          <div v-if="!collapsed || mobileOpen" class="nav-group-label">{{ group.name }}</div>
+          <transition name="zk-nav">
+            <div v-if="!collapsed || mobileOpen" class="nav-group-label">{{ group.name }}</div>
+          </transition>
           <el-tooltip
-            v-for="item in group.items"
+            v-for="(item, idx) in group.items"
             :key="item.path"
             :content="item.title"
             placement="right"
@@ -44,28 +60,53 @@
               @click="closeMobile"
             >
               <el-icon class="nav-icon"><component :is="iconOf(item.icon)" /></el-icon>
-              <span v-if="!collapsed || mobileOpen" class="nav-text">{{ item.title }}</span>
-              <span
-                v-if="(!collapsed || mobileOpen) && item.name === 'admin-sessions' && waitingCount > 0"
-                class="nav-count"
-                :aria-label="`${waitingCount} 个会话等待接入`"
-              >
-                {{ waitingCount }}
-              </span>
+              <transition name="zk-nav">
+                <span
+                  v-if="!collapsed || mobileOpen"
+                  class="nav-text"
+                  :style="{ '--zk-nav-delay': `${Math.min(idx, 6) * 45}ms` }"
+                >{{ item.title }}</span>
+              </transition>
+              <transition name="zk-badge">
+                <span
+                  v-if="(!collapsed || mobileOpen) && item.name === 'admin-sessions' && waitingCount > 0"
+                  class="nav-count"
+                  :class="{ 'is-bumped': countBumped }"
+                  :style="{ minWidth: countWidth }"
+                  :aria-label="`${waitingCount} 个会话等待接入`"
+                >
+                  <transition name="zk-flip">
+                    <span :key="waitingCount" class="nav-count-num">{{ waitingCount }}</span>
+                  </transition>
+                </span>
+              </transition>
             </router-link>
           </el-tooltip>
         </div>
       </nav>
 
-      <div class="sidebar-foot">
-        <div class="side-card" :class="{ mini: collapsed && !mobileOpen }">
-          <div class="side-row">
-            <i class="side-dot" :class="healthTone" aria-hidden="true" />
-            <span v-if="!collapsed || mobileOpen" class="side-label">系统服务</span>
+      <!-- 系统状态：导航栏底部通栏，与菜单同属一套骨架，不做独立卡片 -->
+      <div class="sidebar-status" :class="{ mini: collapsed && !mobileOpen }">
+        <template v-if="!collapsed || mobileOpen">
+          <div class="status-main" role="status" :title="`MySQL ${health.mysql} · Redis ${health.redis}`">
+            <i
+              class="status-dot"
+              :class="[healthTone, { 'zk-dot-live': health.status === 'loading' }]"
+              aria-hidden="true"
+            />
+            <span class="status-text">{{ healthText }}</span>
           </div>
-          <div v-if="!collapsed || mobileOpen" class="side-value">{{ healthText }}</div>
-          <div v-if="!collapsed || mobileOpen" class="side-note">v1.0 · 实时数据</div>
-        </div>
+          <div class="status-meta">
+            MySQL {{ healthLabel(health.mysql) }} · Redis {{ healthLabel(health.redis) }} · v1.0
+          </div>
+        </template>
+        <i
+          v-else
+          class="status-dot"
+          :class="[healthTone, { 'zk-dot-live': health.status === 'loading' }]"
+          :title="healthText"
+          aria-hidden="true"
+        />
       </div>
     </aside>
 
@@ -74,7 +115,7 @@
         <div class="topbar-left">
           <button
             type="button"
-            class="icon-btn menu-btn"
+            class="icon-btn menu-btn zk-press"
             aria-label="打开导航菜单"
             :aria-expanded="mobileOpen"
             aria-controls="app-sidebar"
@@ -84,7 +125,7 @@
           </button>
           <button
             type="button"
-            class="icon-btn collapse-btn"
+            class="icon-btn collapse-btn zk-press"
             :aria-label="collapsed ? '展开侧栏' : '收起侧栏'"
             :aria-expanded="!collapsed"
             @click="collapsed = !collapsed"
@@ -92,23 +133,18 @@
             <el-icon><Expand v-if="collapsed" /><Fold v-else /></el-icon>
           </button>
           <div class="crumb" aria-label="面包屑">
-            <span class="crumb-root">运营控制台</span>
+            <span class="crumb-root">{{ isPlatform ? '平台运营' : '运营控制台' }}</span>
             <span class="crumb-sep" aria-hidden="true">/</span>
-            <span class="crumb-current" aria-current="page">{{ route.meta.title || '数据看板' }}</span>
+            <span class="crumb-current" aria-current="page">
+              <!-- 标题随路由切换淡入：新标题从下方轻推入，旧标题上移退出 -->
+              <transition name="zk-fade" mode="out-in">
+                <span :key="route.path">{{ route.meta.title || '数据看板' }}</span>
+              </transition>
+            </span>
           </div>
         </div>
 
         <div class="topbar-right">
-          <div
-            class="health-badge"
-            :class="healthTone"
-            role="status"
-            :title="`MySQL ${health.mysql} · Redis ${health.redis}`"
-          >
-            <i class="health-dot" aria-hidden="true" />
-            <span>{{ healthShort }}</span>
-          </div>
-          <span class="topbar-divider" aria-hidden="true" />
           <el-dropdown trigger="click" @command="onUserCommand">
             <div class="user-trigger" role="button" tabindex="0" aria-label="用户菜单">
               <div class="avatar" aria-hidden="true">{{ avatarText }}</div>
@@ -124,7 +160,7 @@
                   {{ user?.username }} · {{ roleLabel }}
                 </el-dropdown-item>
                 <el-dropdown-item command="dashboard" divided>
-                  <el-icon><DataAnalysis /></el-icon> 管理看板
+                  <el-icon><DataAnalysis /></el-icon> {{ isPlatform ? '租户与套餐' : '管理看板' }}
                 </el-dropdown-item>
                 <el-dropdown-item command="logout">
                   <el-icon><SwitchButton /></el-icon> 退出登录
@@ -147,28 +183,47 @@
 </template>
 
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import {
+  Aim,
+  AlarmClock,
   ArrowDown,
   Avatar,
-  ChatDotRound,
+  Bell,
+  ChatLineRound,
   ChatLineSquare,
   Close,
   Collection,
+  Connection,
+  Cpu,
   DataAnalysis,
+  DataLine,
   Document,
   Expand,
   Fold,
+  Grid,
   Headset,
+  Key,
+  Memo,
   Menu,
+  Monitor,
+  OfficeBuilding,
+  Opportunity,
+  Position,
+  Setting,
+  SetUp,
   SwitchButton,
   Tickets,
-  User
+  Timer,
+  TrendCharts,
+  User,
+  UserFilled,
+  Wallet
 } from '@element-plus/icons-vue'
 import { clearAuth, getUser } from '@/api/http'
-import { getHealth, getWaitingQueue } from '@/api'
+import { getAgentQueue, getHealth, logout as logoutApi } from '@/api'
 import { ROLE_DICT, dictLabel } from '@/utils/dict'
 
 const router = useRouter()
@@ -177,6 +232,27 @@ const route = useRoute()
 const collapsed = ref(false)
 const mobileOpen = ref(false)
 const user = ref(getUser())
+
+/* ---------- 流动指示器：测量当前菜单项，pill 只靠 transform 滑过去 ---------- */
+const navRef = ref(null)
+const pillStyle = ref({ opacity: 0 })
+const pillReady = ref(false)
+
+function measurePill() {
+  const nav = navRef.value
+  if (!nav) return
+  const active = nav.querySelector('.nav-item.is-active')
+  // 当前路由不在菜单里（如 403）时淡出 pill，不残留旧位置
+  if (!active) {
+    pillStyle.value = { ...pillStyle.value, opacity: 0 }
+    return
+  }
+  pillStyle.value = {
+    height: `${active.offsetHeight}px`,
+    transform: `translate3d(0, ${active.offsetTop}px, 0)`,
+    opacity: 1
+  }
+}
 
 function toggleMobile() {
   mobileOpen.value = !mobileOpen.value
@@ -190,14 +266,21 @@ watch(
   () => route.path,
   () => {
     mobileOpen.value = false
+    // 等 is-active 落到新菜单项后再滑，避免指示器先跳再滑
+    nextTick(measurePill)
   }
 )
 
 watch(mobileOpen, (open) => {
   document.body.style.overflow = open ? 'hidden' : ''
+  nextTick(measurePill)
 })
 
+watch(collapsed, () => nextTick(measurePill))
+
 const roleLabel = computed(() => dictLabel(ROLE_DICT, user.value?.roleCode, '访客'))
+// 平台管理员与租户管理员共用这套骨架，仅导航范围与面包屑文案不同
+const isPlatform = computed(() => user.value?.roleCode === 'PLATFORM_ADMIN')
 const avatarText = computed(() => {
   const nickname = user.value?.nickname || user.value?.username || '客'
   return nickname.slice(0, 1).toUpperCase()
@@ -217,16 +300,16 @@ const healthText = computed(() => {
   if (health.value.status === 'loading') return '正在检测…'
   if (health.value.status === 'UP') return '运行正常'
   if (health.value.status === 'DEGRADED') return '部分依赖异常'
-  if (health.value.status === 'DOWN') return '后端不可用'
+  if (health.value.status === 'DOWN') return '服务不可用'
   return '状态未知'
 })
-const healthShort = computed(() => {
-  if (health.value.status === 'loading') return '检测中'
-  if (health.value.status === 'UP') return '系统正常'
-  if (health.value.status === 'DEGRADED') return '依赖降级'
-  if (health.value.status === 'DOWN') return '后端离线'
-  return '状态未知'
-})
+
+const healthLabel = (value) => {
+  if (value === 'UP') return '正常'
+  if (value === 'DOWN') return '异常'
+  if (value === 'UNKNOWN') return '未知'
+  return '检测中'
+}
 
 async function loadHealth() {
   try {
@@ -244,29 +327,72 @@ async function loadHealth() {
 }
 
 /* ---------- 侧栏菜单（由路由 meta 生成） ---------- */
+// 线性图标：导航统一描边风格，与卡片 1px 描边的克制基调一致
 const iconMap = {
+  Aim,
   DataAnalysis,
-  ChatDotRound,
+  DataLine,
+  Wallet,
+  TrendCharts,
   ChatLineSquare,
   Tickets,
   Headset,
   Collection,
+  Connection,
   User,
+  UserFilled,
   Avatar,
-  Document
+  ChatLineRound,
+  Key,
+  Document,
+  Cpu,
+  Grid,
+  Timer,
+  Memo,
+  Monitor,
+  Setting,
+  SetUp,
+  OfficeBuilding,
+  Bell,
+  AlarmClock,
+  Opportunity,
+  Position
 }
 const iconOf = (name) => iconMap[name] || DataAnalysis
 
 // 等待队列数量：用于会话菜单上的红色角标（失败静默）
 const waitingCount = ref(0)
+const countBumped = ref(false)
+let bumpTimer = 0
+
+// 一位数是圆、两位数变胶囊：只过渡 min-width，角标不参与其它元素排版
+const countWidth = computed(() => {
+  const value = waitingCount.value
+  if (value > 99) return '28px'
+  if (value > 9) return '22px'
+  return '18px'
+})
+
+// 数字变化时角标弹一下（1 → 1.18 → 1，300ms），翻牌由模板内的 zk-flip 过渡完成
+watch(waitingCount, () => {
+  countBumped.value = false
+  requestAnimationFrame(() => {
+    countBumped.value = true
+    window.clearTimeout(bumpTimer)
+    bumpTimer = window.setTimeout(() => {
+      countBumped.value = false
+    }, 320)
+  })
+})
 
 const groups = computed(() => {
   const collected = []
-  // 仅收集 /admin/* 子路由；菜单与路由守卫共用 meta.roles
+  // 仅收集 /admin/* 与 /platform/* 子路由；菜单与路由守卫共用 meta.roles
   const roleCode = user.value?.roleCode || ''
+  const prefixes = ['/admin/', '/platform/']
   for (const record of router.getRoutes()) {
     const meta = record.meta || {}
-    if (!record.path.startsWith('/admin/')) continue
+    if (!prefixes.some((prefix) => record.path.startsWith(prefix))) continue
     if (!meta.group || !meta.title) continue
     if (Array.isArray(meta.roles) && meta.roles.length && !meta.roles.includes(roleCode)) continue
     let group = collected.find((g) => g.name === meta.group)
@@ -287,38 +413,56 @@ const groups = computed(() => {
   return collected
 })
 
+// 菜单分组变化（角色解析、路由注册）后重算指示器位置
+watch(groups, () => nextTick(measurePill))
+
 // 等待接入数量：侧栏会话菜单角标（接口未就绪时静默）
 async function loadWaiting() {
   try {
-    const list = await getWaitingQueue()
-    waitingCount.value = Array.isArray(list) ? list.length : 0
+    const page = await getAgentQueue({ pageNum: 1, pageSize: 1 })
+    waitingCount.value = Number(page?.queueSize ?? page?.total ?? 0) || 0
   } catch {
     waitingCount.value = 0
   }
 }
 
 /* ---------- 用户操作 ---------- */
-function onUserCommand(command) {
+async function onUserCommand(command) {
   if (command === 'logout') {
+    // 先通知后端注销登录态，再清理本地凭证；接口异常不阻塞退出
+    await logoutApi().catch(() => {})
     clearAuth()
     ElMessage.success('已安全退出登录')
     router.replace({ name: 'login' })
   } else if (command === 'dashboard') {
-    router.push('/admin/dashboard')
+    router.push(isPlatform.value ? '/platform/tenants' : '/admin/dashboard')
   }
 }
 
 onMounted(() => {
   loadHealth()
-  loadWaiting()
+  // 等待队列属于租户业务指标，平台管理员不展示
+  if (!isPlatform.value) loadWaiting()
   healthTimer = window.setInterval(() => {
     loadHealth()
-    loadWaiting()
+    if (!isPlatform.value) loadWaiting()
   }, 60000)
+  // 首屏先定位、等一帧真正画上去后再开过渡：避免 pill 从顶部滑到目标位置的假动画
+  nextTick(() => {
+    measurePill()
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        pillReady.value = true
+      })
+    })
+  })
+  window.addEventListener('resize', measurePill)
 })
 
 onBeforeUnmount(() => {
   if (healthTimer) window.clearInterval(healthTimer)
+  if (bumpTimer) window.clearTimeout(bumpTimer)
+  window.removeEventListener('resize', measurePill)
   document.body.style.overflow = ''
 })
 </script>
@@ -330,50 +474,53 @@ onBeforeUnmount(() => {
   background: var(--zk-bg);
 }
 
-/* ---------------- 侧栏 ---------------- */
+/* ---------------- 侧栏：浅色、扁平、与内容同色系 ---------------- */
 .sidebar {
   width: var(--zk-sidebar-w);
   flex: 0 0 var(--zk-sidebar-w);
-  background: radial-gradient(120% 90% at 0% 0%, #14203a 0%, transparent 55%),
-    linear-gradient(180deg, #0b1220 0%, #0f172a 52%, #101a2e 100%);
-  color: #cbd5e1;
+  background: #fbfbfc;
+  color: var(--zk-text-2);
   display: flex;
   flex-direction: column;
   position: sticky;
   top: 0;
   height: 100vh;
-  border-right: 1px solid rgba(148, 163, 184, 0.12);
-  transition: width 0.22s ease, flex-basis 0.22s ease;
+  border-right: 1px solid var(--zk-border);
+  transition: width var(--zk-dur-base) var(--zk-ease-emphasis),
+    flex-basis var(--zk-dur-base) var(--zk-ease-emphasis);
   overflow: hidden;
   z-index: 30;
 }
 
 .shell.collapsed .sidebar {
-  width: 76px;
-  flex-basis: 76px;
+  width: 64px;
+  flex-basis: 64px;
 }
 
 .brand {
   display: flex;
   align-items: center;
-  gap: 11px;
-  padding: 18px 18px 16px;
-  min-height: 70px;
+  gap: 9px;
+  padding: 14px 14px 12px;
+  min-height: 56px;
 }
 
 .brand-logo {
-  width: 38px;
-  height: 38px;
-  flex: 0 0 38px;
-  border-radius: 11px;
-  background: linear-gradient(140deg, #14b8a6 0%, #0ea5a4 45%, #4f46e5 100%);
-  color: #ffffff;
-  font-size: 18px;
-  font-weight: 700;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 28px;
+  border-radius: var(--zk-radius);
+  background: var(--zk-surface);
   display: grid;
   place-items: center;
-  box-shadow: 0 8px 18px -8px rgba(20, 184, 166, 0.9), inset 0 0 0 1px rgba(255, 255, 255, 0.16);
-  letter-spacing: 0;
+  overflow: hidden;
+}
+
+.brand-logo img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
 }
 
 .brand-text {
@@ -383,91 +530,166 @@ onBeforeUnmount(() => {
 
 .brand-name {
   font-size: 16px;
-  font-weight: 700;
-  color: #f8fafc;
-  letter-spacing: 1px;
+  font-weight: 600;
+  color: var(--zk-text);
+  letter-spacing: 0;
 }
 
 .brand-sub {
-  font-size: 10px;
-  color: #7c8ba3;
-  letter-spacing: 0.8px;
-  margin-top: 2px;
+  font-size: 12.5px;
+  color: var(--zk-text-3);
+  letter-spacing: 0;
+  margin-top: 1px;
 }
 
 .nav {
   flex: 1;
   overflow-y: auto;
-  padding: 4px 0 12px;
+  padding: 4px 0 10px;
+  position: relative;
+  /* 隐藏细滚动条：pill 的左右留白才能与菜单项严格对齐（仍可滚轮 / 键盘滚动） */
+  scrollbar-width: none;
 }
 
-.nav::-webkit-scrollbar-thumb {
-  background: rgba(148, 163, 184, 0.25);
+.nav::-webkit-scrollbar {
+  display: none;
+}
+
+/* 流动指示器：绝对定位的圆角底片，只动 transform / opacity（模仿水滴导航的跟随感） */
+.nav-pill {
+  position: absolute;
+  top: 0;
+  left: 8px;
+  right: 8px;
+  height: 34px;
+  border-radius: var(--zk-radius-sm);
+  background: var(--zk-accent);
+  pointer-events: none;
+  opacity: 0;
+  will-change: transform;
+}
+
+.nav-pill.is-ready {
+  transition: transform var(--zk-dur-slow) var(--zk-ease-emphasis),
+    opacity var(--zk-dur-base) var(--zk-ease-out);
+}
+
+/* 折叠/展开：品牌与菜单文字淡出淡入，进场 45ms 错开（只动 opacity / transform） */
+.zk-nav-enter-active {
+  transition: opacity var(--zk-dur-base) var(--zk-ease-out),
+    transform var(--zk-dur-base) var(--zk-ease-out);
+  transition-delay: var(--zk-nav-delay, 0ms);
+}
+
+.zk-nav-leave-active {
+  position: absolute;
+  transition: opacity var(--zk-dur-fast) var(--zk-ease-in),
+    transform var(--zk-dur-fast) var(--zk-ease-in);
+}
+
+.zk-nav-enter-from,
+.zk-nav-leave-to {
+  opacity: 0;
+  transform: translateX(-8px);
+}
+
+/* 分组标题退场更快：离场瞬间菜单项会立刻上移，缩短叠字的时间窗 */
+.zk-nav-leave-active.nav-group-label {
+  transition-duration: var(--zk-dur-instant);
+}
+
+/* 分组：上方细分割线 + 中灰色加粗标题，明确模块边界 */
+.nav-group + .nav-group {
+  margin-top: 6px;
+  padding-top: 2px;
+  border-top: 1px solid var(--zk-border);
 }
 
 .nav-group-label {
-  padding: 16px 22px 8px;
-  font-size: 10px;
+  padding: 8px 16px 5px;
+  font-size: 12.5px;
   font-weight: 700;
-  letter-spacing: 1.6px;
-  color: #5b6b83;
+  letter-spacing: 0.06em;
+  color: var(--zk-text-2);
+  --zk-nav-delay: 40ms;
 }
 
 .nav-item {
   position: relative;
   display: flex;
   align-items: center;
-  gap: 11px;
-  height: 40px;
-  margin: 2px 12px;
-  padding: 0 12px;
-  border-radius: 10px;
-  color: #9aabc1;
-  font-size: 13.5px;
+  gap: 10px;
+  height: 34px;
+  margin: 0 8px;
+  padding: 0 10px;
+  border-radius: var(--zk-radius-sm);
+  color: var(--zk-text-2);
+  font-size: 15px;
   font-weight: 500;
-  transition: background 0.16s ease, color 0.16s ease;
+  line-height: 1;
+  transition: background-color var(--zk-dur-fast) var(--zk-ease-out),
+    color var(--zk-dur-fast) var(--zk-ease-out);
   white-space: nowrap;
+}
+
+.nav-item + .nav-item {
+  margin-top: 1px;
 }
 
 .collapsed .nav-item {
   justify-content: center;
   padding: 0;
-  margin: 3px 12px;
+  margin: 1px 8px;
 }
 
 .nav-item:hover {
-  background: rgba(255, 255, 255, 0.05);
-  color: #e2e8f0;
+  background: #f2f2f4;
+  color: var(--zk-text);
 }
 
+/* 选中态：底色交给 .nav-pill，菜单项本身只切文字对比，避免切换时整块瞬移 */
 .nav-item.is-active {
-  background: linear-gradient(90deg, rgba(20, 184, 166, 0.22), rgba(79, 70, 229, 0.16));
   color: #ffffff;
-  box-shadow: inset 0 0 0 1px rgba(20, 184, 166, 0.2);
+  font-weight: 600;
+  box-shadow: none;
 }
 
-.nav-item.is-active::before {
-  content: '';
-  position: absolute;
-  left: -12px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 3px;
-  height: 20px;
-  border-radius: 0 3px 3px 0;
-  background: linear-gradient(180deg, #2dd4bf, #14b8a6);
-  box-shadow: 0 0 12px rgba(45, 212, 191, 0.8);
+.nav-item.is-active:hover {
+  background: transparent;
+  color: #ffffff;
+}
+
+.nav-item.is-active .nav-icon {
+  color: #ffffff;
+}
+
+.nav-item.is-active .nav-count {
+  background: rgba(255, 255, 255, 0.24);
+  color: #ffffff;
 }
 
 .nav-icon {
   font-size: 17px;
-  flex: 0 0 auto;
+  width: 17px;
+  height: 17px;
+  flex: 0 0 17px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.nav-icon svg {
+  width: 1em;
+  height: 1em;
+  display: block;
 }
 
 .nav-text {
   flex: 1;
   overflow: hidden;
   text-overflow: ellipsis;
+  line-height: 1.2;
 }
 
 .nav-count {
@@ -475,76 +697,125 @@ onBeforeUnmount(() => {
   height: 18px;
   padding: 0 5px;
   border-radius: 999px;
-  background: rgba(225, 29, 72, 0.9);
-  color: #fff;
-  font-size: 10px;
-  font-weight: 700;
+  background: var(--zk-red-soft);
+  color: var(--zk-red);
+  font-size: 11px;
+  font-weight: 600;
   display: grid;
   place-items: center;
+  font-variant-numeric: tabular-nums;
+  overflow: hidden;
+  /* 一位数圆形、两位数平滑变宽成胶囊（模仿 58 红点数字角标） */
+  transition: min-width var(--zk-dur-base) var(--zk-ease-out);
 }
 
-.sidebar-foot {
-  padding: 12px;
+/* 数字变化时弹一下：1 → 1.18 → 1，300ms */
+.nav-count.is-bumped {
+  animation: nav-count-bump var(--zk-dur-slow) var(--zk-ease-spring);
 }
 
-.side-card {
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(148, 163, 184, 0.14);
-  padding: 12px;
+@keyframes nav-count-bump {
+  0% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.18);
+  }
+  100% {
+    transform: scale(1);
+  }
 }
 
-.side-card.mini {
-  padding: 12px 0;
+/* 翻牌：旧数字向上滑走、新数字从下方滑进来，两片叠在同一格 */
+.nav-count-num {
+  grid-area: 1 / 1;
+}
+
+.zk-flip-enter-active,
+.zk-flip-leave-active {
+  transition: opacity 220ms var(--zk-ease-out), transform 220ms var(--zk-ease-out);
+}
+
+.zk-flip-enter-from {
+  opacity: 0;
+  transform: translateY(9px);
+}
+
+.zk-flip-leave-to {
+  opacity: 0;
+  transform: translateY(-9px);
+}
+
+/* 0 ↔ N：没有等待时缩小淡出，出现时从 0.6 弹入（可逆） */
+.zk-badge-enter-active {
+  transition: opacity var(--zk-dur-base) var(--zk-ease-out),
+    transform 220ms var(--zk-ease-spring);
+}
+
+.zk-badge-leave-active {
+  transition: opacity 180ms var(--zk-ease-in), transform 180ms var(--zk-ease-in);
+}
+
+.zk-badge-enter-from,
+.zk-badge-leave-to {
+  opacity: 0;
+  transform: scale(0.6);
+}
+
+/* 底部系统状态：通栏融入导航，细分割线分隔，小字号浅灰 */
+.sidebar-status {
+  flex: 0 0 auto;
+  padding: 10px 16px 14px;
+  border-top: 1px solid var(--zk-border);
+}
+
+.sidebar-status.mini {
   display: grid;
   place-items: center;
+  padding: 14px 0;
 }
 
-.side-row {
+.status-main {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
 }
 
-.side-dot {
-  width: 7px;
-  height: 7px;
+.status-dot {
+  width: 6px;
+  height: 6px;
+  flex: 0 0 6px;
   border-radius: 50%;
-  background: #64748b;
-  box-shadow: 0 0 0 3px rgba(100, 116, 139, 0.18);
+  background: #a1a1aa;
 }
 
-.side-dot.teal {
-  background: #2dd4bf;
-  box-shadow: 0 0 0 3px rgba(45, 212, 191, 0.16), 0 0 10px rgba(45, 212, 191, 0.6);
+.status-dot.teal {
+  background: #10b981;
+  color: #10b981;
 }
-.side-dot.amber {
-  background: #fbbf24;
-  box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.16);
+.status-dot.amber {
+  background: #f59e0b;
+  color: #f59e0b;
 }
-.side-dot.red {
-  background: #fb7185;
-  box-shadow: 0 0 0 3px rgba(251, 113, 133, 0.16);
+.status-dot.red {
+  background: #f43f5e;
+  color: #f43f5e;
 }
-
-.side-label {
-  font-size: 11px;
-  color: #8ba0bd;
-  letter-spacing: 0.4px;
+.status-dot.slate {
+  color: #a1a1aa;
 }
 
-.side-value {
-  margin-top: 6px;
+.status-text {
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--zk-text-2);
+}
+
+.status-meta {
+  margin-top: 3px;
   font-size: 12.5px;
-  font-weight: 600;
-  color: #dbe4f0;
-}
-
-.side-note {
-  margin-top: 10px;
-  font-size: 10px;
-  color: #61738e;
-  letter-spacing: 0.4px;
+  color: var(--zk-text-3);
+  font-variant-numeric: tabular-nums;
 }
 
 /* ---------------- 主区域 ---------------- */
@@ -556,15 +827,14 @@ onBeforeUnmount(() => {
 }
 
 .topbar {
-  height: 64px;
-  flex: 0 0 64px;
+  height: var(--zk-topbar-h);
+  flex: 0 0 var(--zk-topbar-h);
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  padding: 0 24px;
-  background: rgba(255, 255, 255, 0.86);
-  backdrop-filter: blur(10px);
+  padding: 0 20px 0 16px;
+  background: var(--zk-surface);
   border-bottom: 1px solid var(--zk-border);
   position: sticky;
   top: 0;
@@ -574,131 +844,90 @@ onBeforeUnmount(() => {
 .topbar-left {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 6px;
   min-width: 0;
 }
 
 .icon-btn {
-  width: 32px;
-  height: 32px;
-  border-radius: 9px;
-  border: 1px solid var(--zk-border);
-  background: #fff;
-  color: #56657d;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--zk-radius-sm);
+  border: 0;
+  background: transparent;
+  color: var(--zk-text-3);
   display: grid;
   place-items: center;
   cursor: pointer;
-  transition: all 0.16s ease;
+  transition: background-color var(--zk-dur-fast) var(--zk-ease-out),
+    color var(--zk-dur-fast) var(--zk-ease-out);
 }
 
 .icon-btn:hover {
-  color: var(--zk-indigo);
-  border-color: #cdd3f7;
-  background: #f6f7ff;
+  color: var(--zk-text);
+  background: var(--zk-surface-3);
 }
 
 .crumb {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 13px;
-  color: var(--zk-text-3);
+  gap: 7px;
+  font-size: 12.5px;
+  color: var(--zk-text-2);
   min-width: 0;
+  margin-left: 4px;
 }
 
 .crumb-root {
-  letter-spacing: 0.3px;
+  color: var(--zk-text-2);
+  letter-spacing: 0;
 }
 
 .crumb-sep {
-  color: #cbd5e1;
+  color: #c4c5cb;
 }
 
 .crumb-current {
   color: var(--zk-text);
   font-weight: 600;
-  font-size: 14px;
+  font-size: 13px;
+}
+
+/* 路由切换时标题靠 zk-fade 过渡，内层需要可过渡的行内盒 */
+.crumb-current > span {
+  display: inline-block;
 }
 
 .topbar-right {
   display: flex;
   align-items: center;
-  gap: 14px;
-}
-
-.health-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  height: 30px;
-  padding: 0 11px;
-  border-radius: 999px;
-  font-size: 12px;
-  font-weight: 600;
-  border: 1px solid;
-}
-
-.health-badge.teal {
-  color: #0f766e;
-  background: #edfdf9;
-  border-color: #b9f0e6;
-}
-.health-badge.amber {
-  color: #b45309;
-  background: #fff8ea;
-  border-color: #fbe0b0;
-}
-.health-badge.red {
-  color: #be123c;
-  background: #fff1f4;
-  border-color: #f9cdd8;
-}
-.health-badge.slate {
-  color: #64748b;
-  background: #f4f6fa;
-  border-color: #e2e8f0;
-}
-
-.health-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: currentColor;
-  box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.12);
-}
-
-.topbar-divider {
-  width: 1px;
-  height: 22px;
-  background: var(--zk-border);
+  gap: 12px;
 }
 
 .user-trigger {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   cursor: pointer;
-  padding: 4px 6px 4px 4px;
-  border-radius: 10px;
+  padding: 3px 4px;
+  border-radius: var(--zk-radius-sm);
   outline: none;
-  transition: background 0.16s ease;
+  transition: background-color var(--zk-dur-fast) var(--zk-ease-out);
 }
 
 .user-trigger:hover {
-  background: #f4f6fb;
+  background: var(--zk-surface-3);
 }
 
 .avatar {
-  width: 34px;
-  height: 34px;
-  border-radius: 10px;
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
   display: grid;
   place-items: center;
-  font-size: 13px;
-  font-weight: 700;
+  font-size: 11px;
+  font-weight: 600;
   color: #fff;
-  background: linear-gradient(140deg, #4f46e5, #14b8a6);
-  box-shadow: 0 6px 14px -8px rgba(79, 70, 229, 0.9);
+  background: var(--zk-ink-800);
 }
 
 .user-meta {
@@ -706,19 +935,19 @@ onBeforeUnmount(() => {
 }
 
 .user-name {
-  font-size: 13px;
-  font-weight: 600;
+  font-size: 12.5px;
+  font-weight: 500;
   color: var(--zk-text);
 }
 
 .user-role {
-  font-size: 11px;
+  font-size: 10.5px;
   color: var(--zk-text-3);
 }
 
 .caret {
-  font-size: 12px;
-  color: #94a3b8;
+  font-size: 11px;
+  color: var(--zk-text-3);
 }
 
 .content {
@@ -726,13 +955,9 @@ onBeforeUnmount(() => {
   min-width: 0;
 }
 
-@media (max-width: 1180px) {
-  .user-meta,
-  .health-badge span {
+@media (max-width: 1080px) {
+  .user-meta {
     display: none;
-  }
-  .health-badge {
-    padding: 0 10px;
   }
 }
 
@@ -742,10 +967,11 @@ onBeforeUnmount(() => {
     display: none;
   }
   .topbar {
-    padding: 0 14px;
+    padding: 0 12px;
   }
 }
-/* ---------------- v2：可访问性与移动端抽屉导航 ---------------- */
+
+/* ---------------- 移动端抽屉导航 ---------------- */
 .sidebar {
   height: 100vh;
   height: 100dvh;
@@ -754,43 +980,46 @@ onBeforeUnmount(() => {
 .sidebar-close {
   display: grid;
   place-items: center;
-  width: 40px;
-  height: 40px;
+  width: 32px;
+  height: 32px;
   margin-left: auto;
-  border-radius: 10px;
-  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: var(--zk-radius-sm);
+  border: 0;
   background: transparent;
-  color: #cbd5e1;
+  color: var(--zk-text-3);
   cursor: pointer;
 }
 
 .sidebar-close:hover {
-  background: rgba(255, 255, 255, 0.06);
-  color: #fff;
+  background: var(--zk-surface-3);
+  color: var(--zk-text);
 }
 
 .sidebar-overlay {
   display: none;
 }
 
+/* 移动端遮罩 200ms 淡入；抽屉面板 320ms 滑入，关闭走同一条路径的反向 */
+.zk-overlay-enter-active {
+  transition: opacity var(--zk-dur-base) var(--zk-ease-out);
+}
+
+.zk-overlay-leave-active {
+  transition: opacity var(--zk-dur-base) var(--zk-ease-in);
+}
+
+.zk-overlay-enter-from,
+.zk-overlay-leave-to {
+  opacity: 0;
+}
+
 .menu-btn {
   display: none;
 }
 
-.nav-item {
-  min-height: 44px;
-  height: 44px;
-}
-
-.nav-item:focus-visible {
-  outline: 2px solid #2dd4bf;
-  outline-offset: -2px;
-  background: rgba(255, 255, 255, 0.07);
-}
-
 .sidebar :focus-visible,
 .topbar :focus-visible {
-  outline: 2px solid var(--zk-teal-dark);
+  outline: 2px solid var(--zk-accent);
   outline-offset: 2px;
 }
 
@@ -806,32 +1035,31 @@ onBeforeUnmount(() => {
   .sidebar {
     position: fixed;
     inset: 0 auto 0 0;
-    width: 268px;
-    flex-basis: 268px;
+    width: 264px;
+    flex-basis: 264px;
     height: 100dvh;
     transform: translateX(-102%);
-    transition: transform var(--zk-dur-base) var(--zk-ease-out);
+    transition: transform 320ms var(--zk-ease-emphasis);
     z-index: var(--zk-z-overlay);
     box-shadow: none;
   }
 
   .shell .sidebar,
   .shell.collapsed .sidebar {
-    width: 268px;
-    flex-basis: 268px;
+    width: 264px;
+    flex-basis: 264px;
   }
 
   .shell.is-mobile-open .sidebar {
     transform: translateX(0);
-    box-shadow: 30px 0 60px -30px rgba(0, 0, 0, 0.65);
+    box-shadow: var(--zk-shadow-lg);
   }
 
   .sidebar-overlay {
     display: block;
     position: fixed;
     inset: 0;
-    background: rgba(7, 12, 22, 0.55);
-    backdrop-filter: blur(2px);
+    background: rgba(9, 9, 11, 0.32);
     z-index: calc(var(--zk-z-overlay) - 1);
   }
 
@@ -840,42 +1068,32 @@ onBeforeUnmount(() => {
   }
 
   .content {
-    min-height: calc(100dvh - 64px);
+    min-height: calc(100dvh - var(--zk-topbar-h));
   }
 }
 
 @media (max-width: 640px) {
   .topbar {
-    height: 58px;
-    flex-basis: 58px;
-    padding: 0 12px;
+    height: 52px;
+    flex-basis: 52px;
+    padding: 0 10px;
   }
 
   .topbar-left {
-    gap: 8px;
+    gap: 2px;
   }
 
   .icon-btn {
-    width: 40px;
-    height: 40px;
-  }
-
-  .health-badge {
-    height: 28px;
-    padding: 0 9px;
+    width: 32px;
+    height: 32px;
   }
 
   .user-meta {
     display: none;
   }
 
-  .avatar {
-    width: 32px;
-    height: 32px;
-  }
-
   .user-trigger {
-    padding: 3px;
+    padding: 2px;
   }
 
   .crumb {
@@ -883,7 +1101,7 @@ onBeforeUnmount(() => {
   }
 
   .content {
-    min-height: calc(100dvh - 58px);
+    min-height: calc(100dvh - 52px);
   }
 }
 </style>

@@ -23,6 +23,10 @@ public class WorkOrderLog implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
+    /** 租户 ID，由多租户拦截器在写入时按当前上下文填充 */
+    private Long tenantId;
+
+
     /** 主键 ID，数据库自增 */
     @TableId(type = IdType.AUTO)
     private Long id;

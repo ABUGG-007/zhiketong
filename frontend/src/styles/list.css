@@ -25,7 +25,7 @@
   width: 52px;
   height: 52px;
   margin: 0 auto 14px;
-  border-radius: 16px;
+  border-radius: var(--zk-radius);
   display: grid;
   place-items: center;
   font-size: 24px;
@@ -63,8 +63,8 @@
 
 .hit-num {
   font-size: 12.5px;
-  font-weight: 650;
-  color: var(--zk-teal-deep);
+  font-weight: 600;
+  color: var(--zk-accent-hover);
   min-width: 26px;
   font-variant-numeric: tabular-nums;
 }
@@ -72,17 +72,17 @@
 .hit-bar {
   flex: 1;
   max-width: 56px;
-  height: 5px;
-  border-radius: 999px;
-  background: #eef1f7;
+  height: 4px;
+  border-radius: var(--zk-radius-xs);
+  background: #ececef;
   overflow: hidden;
 }
 
 .hit-bar i {
   display: block;
   height: 100%;
-  border-radius: 999px;
-  background: linear-gradient(90deg, #2dd4bf, #14b8a6);
+  border-radius: var(--zk-radius-xs);
+  background: var(--zk-accent);
   transition: width var(--zk-dur-slow) var(--zk-ease-out);
 }
 
@@ -94,7 +94,7 @@
   flex-wrap: wrap;
   padding: 14px 18px;
   border-bottom: 1px solid var(--zk-border);
-  background: linear-gradient(180deg, #fbfcfe, #ffffff);
+  background: #fff;
 }
 
 .cat-strip-label {
@@ -111,7 +111,7 @@
   gap: 6px;
   min-height: 30px;
   padding: 3px 10px;
-  border-radius: 999px;
+  border-radius: var(--zk-radius-sm);
   font-size: 12px;
   color: var(--zk-text-2);
   background: var(--zk-surface-2);
@@ -127,37 +127,32 @@
 
 .cat-chip b {
   font-size: 11px;
-  color: var(--zk-teal-deep);
-  background: var(--zk-teal-soft);
-  border-radius: 999px;
+  color: var(--zk-text-2);
+  background: var(--zk-surface-3);
+  border-radius: var(--zk-radius-xs);
   padding: 0 6px;
   line-height: 18px;
   font-variant-numeric: tabular-nums;
 }
 
 .cat-chip.is-total {
-  color: var(--zk-indigo-dark);
-  background: var(--zk-indigo-soft);
-  border-color: var(--zk-indigo-line);
+  color: var(--zk-accent-hover);
+  background: var(--zk-accent-soft);
+  border-color: var(--zk-accent-line);
 }
 
 .cat-chip.is-total b {
-  color: var(--zk-indigo-dark);
+  color: var(--zk-accent-hover);
   background: #ffffff;
 }
 
-/* 双行单元格 */
+/* 双行单元格（具体排版由各页面 scoped 样式定义，此处只保留基础字色） */
 .cell-question {
   font-size: 13px;
   font-weight: 550;
   color: var(--zk-text);
   line-height: 1.5;
   margin-bottom: 3px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  display: -webkit-box;
-  -webkit-line-clamp: 1;
-  -webkit-box-orient: vertical;
 }
 
 .cell-answer {
@@ -179,7 +174,7 @@
 .kw-tag {
   font-size: 11px;
   padding: 1px 7px;
-  border-radius: 5px;
+  border-radius: var(--zk-radius-sm);
   color: var(--zk-text-2);
   background: var(--zk-surface-2);
   border: 1px solid var(--zk-border);
@@ -221,7 +216,7 @@
   margin-top: 7px;
   flex: 0 0 5px;
   border-radius: 50%;
-  background: var(--zk-teal);
+  background: var(--zk-accent);
 }
 
 /* 可点击表格行 */

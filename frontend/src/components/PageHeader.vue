@@ -4,7 +4,10 @@
       <div v-if="eyebrow" class="zk-eyebrow">{{ eyebrow }}</div>
       <h1>
         <span>{{ title }}</span>
-        <span v-if="badge" class="head-badge">{{ badge }}</span>
+        <!-- badge 入场弹一下（220ms），文案变化时按同一路径重播 -->
+        <transition name="zk-pop" mode="out-in" appear>
+          <span v-if="badge" :key="badge" class="head-badge">{{ badge }}</span>
+        </transition>
       </h1>
       <p v-if="description" class="zk-page-sub">{{ description }}</p>
     </div>
@@ -28,39 +31,39 @@ defineProps({
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
-  gap: 20px;
+  gap: 16px;
   margin-bottom: 20px;
   flex-wrap: wrap;
 }
 
 .head-main h1 {
-  font-size: 25px;
-  font-weight: 720;
-  letter-spacing: -0.4px;
-  line-height: 1.25;
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -0.2px;
+  line-height: 1.3;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   color: var(--zk-text);
   text-wrap: balance;
 }
 
 .head-badge {
   font-size: 11px;
-  font-weight: 650;
-  letter-spacing: 0.3px;
-  color: var(--zk-teal-deep);
-  background: var(--zk-teal-soft);
-  border: 1px solid var(--zk-teal-line);
-  padding: 3px 8px;
-  border-radius: 999px;
+  font-weight: 500;
+  letter-spacing: 0;
+  color: var(--zk-text-2);
+  background: var(--zk-surface-3);
+  border: 1px solid var(--zk-border);
+  padding: 2px 7px;
+  border-radius: var(--zk-radius-sm);
   white-space: nowrap;
 }
 
 .head-actions {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   flex-wrap: wrap;
 }
 
@@ -70,7 +73,7 @@ defineProps({
   }
 
   .head-main h1 {
-    font-size: 21px;
+    font-size: 18px;
   }
 
   .head-actions {

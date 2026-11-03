@@ -78,7 +78,7 @@ http.interceptors.response.use(
         return Promise.reject(Object.assign(new Error(message), { code }))
       }
       if (code === 404) {
-        if (!silent) ElMessage.warning(message || '接口不存在或数据已被删除')
+        if (!silent) ElMessage.warning(message || '请求的数据不存在或已被删除')
         return Promise.reject(Object.assign(new Error(message), { code }))
       }
       if (!silent) ElMessage.error(message)
@@ -100,13 +100,13 @@ http.interceptors.response.use(
     if (status === 403) {
       ElMessage.error(serverMsg || '无权限访问该资源')
     } else if (status === 404) {
-      ElMessage.warning(message || '接口暂未开放（404）')
+      ElMessage.warning(message || '请求的功能暂不可用，请刷新后重试')
     } else if (status >= 500) {
       ElMessage.error(message || '服务器异常，请稍后重试')
     } else if (error.code === 'ECONNABORTED') {
-      ElMessage.error('请求超时，请检查后端服务')
+      ElMessage.error('请求超时，请稍后重试')
     } else {
-      ElMessage.error(message || '无法连接后端服务（http://localhost:8080）')
+      ElMessage.error(message || '网络连接失败，请稍后重试')
     }
     return Promise.reject(error)
   }

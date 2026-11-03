@@ -53,11 +53,11 @@ INSERT INTO `sys_user`
 (6, 'user03',  '$2a$10$ZXY2J5c1lFzryZBQtffBNuASALRF5sjxZAhx57euXnV5Dc12Wkmqy', '赵小刚',     'USER',  '13900000003', 'user03@example.com',    NULL, 0, NULL,                       NULL,           NOW() - INTERVAL 35 DAY, NOW() - INTERVAL 35 DAY,    0);
 
 -- -------------------------------------------------------------
--- 3. 坐席状态表 agent_status：2 条（agent01 在线、agent02 离线）
+-- 3. 坐席状态表 agent_status：2 条（agent01 在线空闲、agent02 离线）
 -- -------------------------------------------------------------
 INSERT INTO `agent_status`
 (`id`, `agent_id`, `online_status`, `max_concurrent`, `current_count`, `total_served`, `last_heartbeat`, `create_time`, `update_time`) VALUES
-(1, 2, 'ONLINE',  5, 1, 37, NOW() - INTERVAL 30 SECOND, NOW() - INTERVAL 60 DAY, NOW() - INTERVAL 30 SECOND),
+(1, 2, 'ONLINE',  5, 0, 37, NOW() - INTERVAL 30 SECOND, NOW() - INTERVAL 60 DAY, NOW() - INTERVAL 30 SECOND),
 (2, 3, 'OFFLINE', 5, 0, 52, NOW() - INTERVAL 1 DAY,    NOW() - INTERVAL 60 DAY, NOW() - INTERVAL 1 DAY);
 
 -- -------------------------------------------------------------
@@ -116,7 +116,7 @@ INSERT INTO `kb_entry`
  '退款,申请退款,退钱,无理由退款', 98, 1, 1, 1, NOW() - INTERVAL 50 DAY, NOW() - INTERVAL 3 DAY, 0),
 (14, 4, '退款多久能到账？',
  '审核通过后，微信、支付宝一般 1-3 个工作日到账，银行卡 3-7 个工作日到账。如超过时限仍未到账，请提供订单号和退款流水号，我们会联系支付渠道核实。',
- '退款到账,退款时间,什么时候到账', 73, 1, 1, 1, NOW() - INTERVAL 49 DAY, NOW() - INTERVAL 6 DAY, 0),
+ '退款,退款到账,退款时间,什么时候到账,到账', 73, 1, 1, 1, NOW() - INTERVAL 49 DAY, NOW() - INTERVAL 6 DAY, 0),
 (15, 4, '商品有质量问题怎么换货？',
  '请在收货后 7 天内于订单详情页申请售后，选择“换货”并上传问题照片。审核通过后按页面提示寄回商品，我们收到后会免费寄出新品。',
  '换货,质量问题,售后,退货', 27, 1, 1, 1, NOW() - INTERVAL 47 DAY, NOW() - INTERVAL 12 DAY, 0),
@@ -138,7 +138,7 @@ INSERT INTO `kb_entry`
 
 -- -------------------------------------------------------------
 -- 6. 会话表 chat_session：10 条
---    AI 3 条、WAITING 2 条、HUMAN 2 条、CLOSED 3 条（带评分）
+--    同一用户仅允许 1 条进行中会话：user01=AI、user02=WAITING，其余均为 CLOSED 历史记录
 -- -------------------------------------------------------------
 INSERT INTO `chat_session`
 (`id`, `session_no`, `user_id`, `agent_id`, `status`, `close_reason`, `rating`, `rating_comment`,
@@ -149,18 +149,18 @@ INSERT INTO `chat_session`
  NULL, NULL, NULL, NOW() - INTERVAL 6 DAY - INTERVAL 115 MINUTE, 4,
  NOW() - INTERVAL 6 DAY - INTERVAL 120 MINUTE, NOW() - INTERVAL 6 DAY - INTERVAL 115 MINUTE, 0),
 (2,  CONCAT('CS', DATE_FORMAT(NOW() - INTERVAL 5 DAY - INTERVAL 60 MINUTE, '%Y%m%d%H%i%s'), '2002'),
- 5, NULL, 'AI', NULL, NULL, NULL,
- NULL, NULL, NULL, NULL, 4,
- NOW() - INTERVAL 5 DAY - INTERVAL 60 MINUTE, NOW() - INTERVAL 5 DAY - INTERVAL 56 MINUTE, 0),
+ 5, NULL, 'CLOSED', 'USER_CLOSED', 4, 'AI 解答清楚，问题已解决',
+ NULL, NULL, NULL, NOW() - INTERVAL 5 DAY - INTERVAL 50 MINUTE, 4,
+ NOW() - INTERVAL 5 DAY - INTERVAL 60 MINUTE, NOW() - INTERVAL 5 DAY - INTERVAL 50 MINUTE, 0),
 (3,  CONCAT('CS', DATE_FORMAT(NOW() - INTERVAL 4 DAY - INTERVAL 300 MINUTE, '%Y%m%d%H%i%s'), '3003'),
- 4, 2, 'HUMAN', NULL, NULL, NULL,
+ 4, 2, 'CLOSED', 'AGENT_CLOSED', 4, '客服解答清晰，问题已解决',
  NOW() - INTERVAL 4 DAY - INTERVAL 297 MINUTE, NOW() - INTERVAL 4 DAY - INTERVAL 297 MINUTE,
- NOW() - INTERVAL 4 DAY - INTERVAL 294 MINUTE, NULL, 7,
- NOW() - INTERVAL 4 DAY - INTERVAL 300 MINUTE, NOW() - INTERVAL 4 DAY - INTERVAL 291 MINUTE, 0),
+ NOW() - INTERVAL 4 DAY - INTERVAL 294 MINUTE, NOW() - INTERVAL 4 DAY - INTERVAL 280 MINUTE, 6,
+ NOW() - INTERVAL 4 DAY - INTERVAL 300 MINUTE, NOW() - INTERVAL 4 DAY - INTERVAL 280 MINUTE, 0),
 (4,  CONCAT('CS', DATE_FORMAT(NOW() - INTERVAL 3 DAY - INTERVAL 240 MINUTE, '%Y%m%d%H%i%s'), '4004'),
  5, 2, 'CLOSED', 'USER_CLOSED', 5, '客服响应很快，退款已到账，问题解决',
  NOW() - INTERVAL 3 DAY - INTERVAL 238 MINUTE, NOW() - INTERVAL 3 DAY - INTERVAL 238 MINUTE,
- NOW() - INTERVAL 3 DAY - INTERVAL 235 MINUTE, NOW() - INTERVAL 3 DAY - INTERVAL 219 MINUTE, 5,
+ NOW() - INTERVAL 3 DAY - INTERVAL 235 MINUTE, NOW() - INTERVAL 3 DAY - INTERVAL 219 MINUTE, 4,
  NOW() - INTERVAL 3 DAY - INTERVAL 240 MINUTE, NOW() - INTERVAL 3 DAY - INTERVAL 219 MINUTE, 0),
 (5,  CONCAT('CS', DATE_FORMAT(NOW() - INTERVAL 2 DAY - INTERVAL 420 MINUTE, '%Y%m%d%H%i%s'), '5005'),
  4, 3, 'CLOSED', 'AGENT_CLOSED', 4, '处理专业，发票已收到',
@@ -170,13 +170,13 @@ INSERT INTO `chat_session`
 (6,  CONCAT('CS', DATE_FORMAT(NOW() - INTERVAL 1 DAY - INTERVAL 540 MINUTE, '%Y%m%d%H%i%s'), '6006'),
  6, 2, 'CLOSED', 'TIMEOUT', 3, '回复有点慢，问题最终自己解决了',
  NOW() - INTERVAL 1 DAY - INTERVAL 536 MINUTE, NOW() - INTERVAL 1 DAY - INTERVAL 536 MINUTE,
- NOW() - INTERVAL 1 DAY - INTERVAL 532 MINUTE, NOW() - INTERVAL 1 DAY - INTERVAL 480 MINUTE, 6,
+ NOW() - INTERVAL 1 DAY - INTERVAL 532 MINUTE, NOW() - INTERVAL 1 DAY - INTERVAL 480 MINUTE, 4,
  NOW() - INTERVAL 1 DAY - INTERVAL 540 MINUTE, NOW() - INTERVAL 1 DAY - INTERVAL 480 MINUTE, 0),
 (7,  CONCAT('CS', DATE_FORMAT(NOW() - INTERVAL 480 MINUTE, '%Y%m%d%H%i%s'), '7007'),
- 5, 3, 'HUMAN', NULL, NULL, NULL,
+ 5, 3, 'CLOSED', 'AGENT_CLOSED', 5, '坐席处理专业，问题已解决',
  NOW() - INTERVAL 476 MINUTE, NOW() - INTERVAL 476 MINUTE,
- NOW() - INTERVAL 474 MINUTE, NULL, 5,
- NOW() - INTERVAL 480 MINUTE, NOW() - INTERVAL 472 MINUTE, 0),
+ NOW() - INTERVAL 474 MINUTE, NOW() - INTERVAL 460 MINUTE, 4,
+ NOW() - INTERVAL 480 MINUTE, NOW() - INTERVAL 460 MINUTE, 0),
 (8,  CONCAT('CS', DATE_FORMAT(NOW() - INTERVAL 180 MINUTE, '%Y%m%d%H%i%s'), '8008'),
  4, NULL, 'AI', NULL, NULL, NULL,
  NULL, NULL, NULL, NULL, 3,
@@ -186,9 +186,9 @@ INSERT INTO `chat_session`
  NOW() - INTERVAL 8 MINUTE, NOW() - INTERVAL 8 MINUTE, NULL, NULL, 3,
  NOW() - INTERVAL 8 MINUTE, NOW() - INTERVAL 5 MINUTE, 0),
 (10, CONCAT('CS', DATE_FORMAT(NOW() - INTERVAL 5 MINUTE, '%Y%m%d%H%i%s'), '1010'),
- 4, NULL, 'WAITING', NULL, NULL, NULL,
- NOW() - INTERVAL 5 MINUTE, NOW() - INTERVAL 5 MINUTE, NULL, NULL, 3,
- NOW() - INTERVAL 5 MINUTE, NOW() - INTERVAL 3 MINUTE, 0);
+ 4, NULL, 'CLOSED', 'TIMEOUT', NULL, NULL,
+ NOW() - INTERVAL 5 MINUTE, NOW() - INTERVAL 5 MINUTE, NULL, NOW() - INTERVAL 2 MINUTE, 3,
+ NOW() - INTERVAL 5 MINUTE, NOW() - INTERVAL 2 MINUTE, 0);
 
 -- -------------------------------------------------------------
 -- 7. 聊天消息 chat_message：44 条（每个会话 3-7 条，USER/AI/AGENT/SYSTEM 混合）
@@ -246,15 +246,17 @@ INSERT INTO `chat_message`
 (39, 9, 'USER',  5, '我要投诉，你们的服务太差了！', 'TEXT', NULL, NULL, NULL, 1, NOW() - INTERVAL 8 MINUTE),
 (40, 9, 'AI',    NULL, '非常抱歉给您带来不好的体验，我马上为您转接人工客服优先处理，请稍候。', 'TEXT', 20, 0.6500, 'deepseek-chat', 1, NOW() - INTERVAL 7 MINUTE),
 (41, 9, 'USER',  5, '快点，我有急事！', 'TEXT', NULL, NULL, NULL, 0, NOW() - INTERVAL 5 MINUTE),
--- 会话 10（WAITING，5 分钟前，排队演示）
+-- 会话 10（排队超时自动结束，5 分钟前）
 (42, 10, 'USER',  4, '我的订单一直显示待发货，能帮我看看吗？', 'TEXT', NULL, NULL, NULL, 1, NOW() - INTERVAL 5 MINUTE),
 (43, 10, 'AI',    NULL, '我帮您看了一下，订单正在仓库备货中，通常 24 小时内发出；如果超过 24 小时仍未发货，我可以为您转接人工客服核实。', 'TEXT', NULL, 0.5500, 'deepseek-chat', 1, NOW() - INTERVAL 4 MINUTE),
 (44, 10, 'USER',  4, '帮我转人工', 'TEXT', NULL, NULL, NULL, 0, NOW() - INTERVAL 3 MINUTE);
 
--- 校准 message_count，保证与 chat_message 实际条数一致
+-- 校准 message_count：口径与后端一致，仅统计用户/AI/坐席消息，系统提示不计入
 UPDATE `chat_session`
 SET `message_count` = (
-    SELECT COUNT(*) FROM `chat_message` WHERE `chat_message`.`session_id` = `chat_session`.`id`
+    SELECT COUNT(*) FROM `chat_message`
+    WHERE `chat_message`.`session_id` = `chat_session`.`id`
+      AND `chat_message`.`sender_type` <> 'SYSTEM'
 );
 
 -- -------------------------------------------------------------

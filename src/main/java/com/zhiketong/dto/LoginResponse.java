@@ -25,4 +25,13 @@ public class LoginResponse implements Serializable {
 
     /** 用户信息 */
     private UserVO user;
+
+    /** 租户 ID（平台管理员为空） */
+    private Long tenantId;
+
+    /** 租户名称（平台管理员为空） */
+    private String tenantName;
+
+    /** 当前套餐编码（平台管理员为空） */
+    private String planCode;
 }

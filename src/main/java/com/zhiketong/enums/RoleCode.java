@@ -14,7 +14,10 @@ public enum RoleCode {
     AGENT("AGENT", "客服坐席"),
 
     /** 普通用户 */
-    USER("USER", "普通用户");
+    USER("USER", "普通用户"),
+
+    /** 平台管理员：跨租户管理租户、套餐与平台配置 */
+    PLATFORM_ADMIN("PLATFORM_ADMIN", "平台管理员");
 
     private final String code;
 

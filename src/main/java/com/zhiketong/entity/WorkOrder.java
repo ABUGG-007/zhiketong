@@ -23,6 +23,10 @@ public class WorkOrder extends BaseEntity {
 
     private static final long serialVersionUID = 1L;
 
+    /** 租户 ID，由多租户拦截器在写入时按当前上下文填充 */
+    private Long tenantId;
+
+
     /** 工单号：WO + yyyyMMddHHmmss + 4 位随机 */
     private String orderNo;
 
@@ -38,7 +42,7 @@ public class WorkOrder extends BaseEntity {
     /** 优先级：P0/P1/P2/P3 */
     private String priority;
 
-    /** 状态：PENDING/ASSIGNED/PROCESSING/RESOLVED/CLOSED/REOPENED */
+    /** 状态：PENDING/ASSIGNED/PROCESSING/WAITING_CUSTOMER/RESOLVED/CLOSED/REOPENED */
     private String status;
 
     /** 来源：CHAT/MANUAL/PHONE */
@@ -46,6 +50,12 @@ public class WorkOrder extends BaseEntity {
 
     /** 关联会话 ID */
     private Long sessionId;
+
+    /** 工单模板 ID：按模板创建时记录，普通创建为空 */
+    private Long templateId;
+
+    /** SLA 计时记录 ID，指向 order_sla_record.id；为空表示未启用新 SLA 引擎（历史工单） */
+    private Long slaId;
 
     /** 创建人 ID */
     private Long creatorId;
@@ -70,6 +80,15 @@ public class WorkOrder extends BaseEntity {
 
     /** 是否超时：0 否 1 是 */
     private Integer overdueFlag;
+
+    /** SLA 状态：NORMAL 正常 / WARN 预警 / OVERDUE 超时 / PAUSED 停表中 / FINISHED 已完结 */
+    private String slaStatus;
+
+    /** 累计停表分钟数，解决时限按此时长顺延 */
+    private Integer pauseMinutes;
+
+    /** 下次回复截止时间（回复间隔 SLA），为空表示未启用该级时限 */
+    private LocalDateTime replyDueTime;
 
     /** 备注 */
     private String remark;

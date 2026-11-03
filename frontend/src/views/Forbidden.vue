@@ -1,6 +1,7 @@
 <template>
   <div class="forbidden-page">
-    <div class="forbidden-card zk-card">
+    <!-- 图标、标题、说明、按钮以 45ms 依次浮现 -->
+    <div class="forbidden-card zk-card" v-reveal.group>
       <div class="code" aria-hidden="true">403</div>
       <h1>无权访问</h1>
       <p class="desc">
@@ -60,9 +61,7 @@ function logout() {
   display: grid;
   place-items: center;
   padding: 32px 20px;
-  background:
-    radial-gradient(70% 60% at 50% 0%, #eef2ff 0%, transparent 70%),
-    var(--zk-bg);
+  background: var(--zk-bg);
 }
 
 .forbidden-card {
@@ -73,23 +72,20 @@ function logout() {
 }
 
 .code {
-  font-size: 64px;
+  font-size: 56px;
   line-height: 1;
-  font-weight: 800;
+  font-weight: 600;
   letter-spacing: -2px;
-  background: linear-gradient(120deg, var(--zk-indigo) 0%, var(--zk-teal) 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-  margin-bottom: 14px;
+  color: var(--zk-accent);
+  margin-bottom: 16px;
 }
 
 h1 {
-  font-size: 22px;
-  font-weight: 700;
-  letter-spacing: -0.3px;
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -0.2px;
   color: var(--zk-text);
-  margin-bottom: 12px;
+  margin-bottom: 10px;
 }
 
 .desc {
@@ -130,10 +126,10 @@ h1 {
 }
 
 .actions .el-button {
-  height: 44px;
-  padding: 0 22px;
-  font-weight: 600;
-  border-radius: 10px;
+  height: 38px;
+  padding: 0 18px;
+  font-weight: 500;
+  border-radius: 6px;
 }
 
 .hint {

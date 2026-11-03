@@ -1,7 +1,6 @@
 <template>
   <div class="zk-page">
     <PageHeader
-      eyebrow="ACCOUNTS"
       title="用户管理"
       description="系统账号管理：新增、编辑、启用/禁用、重置密码与逻辑删除。内置 admin 与当前登录账号受保护。"
     >
@@ -62,7 +61,15 @@
         tabindex="0"
         :aria-busy="loading ? 'true' : 'false'"
       >
-        <el-table v-loading="loading" :data="rows" row-key="id" aria-label="用户列表">
+        <ZkSkeleton v-if="!loaded" variant="table" :rows="pageSize" :cols="8" class="table-skeleton" />
+        <el-table
+          v-else
+          v-loading="loading"
+          :data="rows"
+          row-key="id"
+          aria-label="用户列表"
+          :class="fadeClass"
+        >
           <el-table-column label="账号" width="150">
             <template #default="{ row }">
               <div class="user-cell">
@@ -115,7 +122,7 @@
               <span class="cell-time">{{ formatDateTime(row.createTime) }}</span>
             </template>
           </el-table-column>
-          <el-table-column label="操作" width="248">
+          <el-table-column label="操作" width="248" fixed="right">
             <template #default="{ row }">
               <div class="row-actions">
                 <el-button
@@ -165,18 +172,21 @@
           </el-table-column>
 
           <template #empty>
-            <div class="table-empty">
-              <div class="empty-icon" aria-hidden="true">
-                <el-icon><User /></el-icon>
-              </div>
-              <p>{{ error || '暂无匹配的账号' }}</p>
-              <span v-if="error" class="empty-hint">请确认后端 /api/admin/users 已就绪</span>
-              <span v-else-if="hasFilter" class="empty-hint">当前筛选条件下没有账号，试试放宽条件</span>
-              <span v-else class="empty-hint">还没有账号，点击右上角「新增用户」创建</span>
+            <ZkEmpty
+              size="sm"
+              :title="error || '暂无匹配的账号'"
+              :hint="
+                error
+                  ? '加载失败，请稍后重试'
+                  : hasFilter
+                    ? '当前筛选条件下没有账号，试试放宽条件'
+                    : '还没有账号，点击右上角「新增用户」创建'
+              "
+            >
               <el-button v-if="error" @click="load">重新加载</el-button>
               <el-button v-else-if="hasFilter" @click="reset">清空筛选条件</el-button>
               <el-button v-else @click="load">刷新列表</el-button>
-            </div>
+            </ZkEmpty>
           </template>
         </el-table>
       </div>
@@ -198,7 +208,7 @@
 
     <div class="page-tip">
       <i aria-hidden="true" />
-      数据来源 /api/admin/users（GET/POST/PUT/DELETE） · 密码 BCrypt 加密存储 · 内置 admin 与当前账号不可禁用/删除
+      账号数据仅管理员可见 · 密码采用加密存储 · 内置 admin 与当前登录账号不可禁用/删除
     </div>
 
     <!-- 新增 / 编辑 -->
@@ -338,11 +348,13 @@
 </template>
 
 <script setup>
-import { computed, nextTick, onMounted, reactive, ref } from 'vue'
+import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, Refresh, Search, User } from '@element-plus/icons-vue'
+import { Plus, Refresh, Search } from '@element-plus/icons-vue'
 import PageHeader from '@/components/PageHeader.vue'
 import StatusPill from '@/components/StatusPill.vue'
+import ZkSkeleton from '@/components/ZkSkeleton.vue'
+import ZkEmpty from '@/components/ZkEmpty.vue'
 import {
   createUser,
   deleteUser,
@@ -371,6 +383,7 @@ const {
   pageNum,
   pageSize,
   loading,
+  loaded,
   error,
   load,
   search,
@@ -378,6 +391,13 @@ const {
   changePage,
   changeSize
 } = usePagedList(getUsers, { keyword: '', roleCode: '', status: '' })
+
+// 筛选 / 翻页结果到达时重播 160ms 淡入（只淡不位移，避免表格重排）
+const listTick = ref(0)
+watch(rows, () => {
+  listTick.value += 1
+})
+const fadeClass = computed(() => (listTick.value % 2 ? 'list-fade-a' : 'list-fade-b'))
 
 const hasFilter = computed(
   () =>
@@ -683,6 +703,38 @@ onMounted(() => {
 </script>
 
 <style scoped>
+/* 首屏骨架与真实表格同宽同列，加载前后版面不跳 */
+.table-skeleton {
+  padding: 12px 14px;
+}
+
+/* 筛选结果淡入 160ms：只淡不位移，避免表格重排打断扫读 */
+.list-fade-a {
+  animation: zk-fade-a 160ms var(--zk-ease-out);
+}
+
+.list-fade-b {
+  animation: zk-fade-b 160ms var(--zk-ease-out);
+}
+
+@keyframes zk-fade-a {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes zk-fade-b {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
 .user-cell {
   display: flex;
   align-items: center;
@@ -693,7 +745,7 @@ onMounted(() => {
   width: 28px;
   height: 28px;
   flex: 0 0 28px;
-  border-radius: 9px;
+  border-radius: var(--zk-radius-sm);
   display: grid;
   place-items: center;
   font-size: 11.5px;
@@ -730,7 +782,7 @@ onMounted(() => {
   font-size: 10px;
   line-height: 1;
   padding: 3px 5px;
-  border-radius: 5px;
+  border-radius: var(--zk-radius-sm);
   color: var(--zk-teal-deep);
   background: var(--zk-teal-soft);
   border: 1px solid var(--zk-teal-line);
@@ -793,7 +845,7 @@ onMounted(() => {
 }
 
 .table-scroll :deep(.el-table__body tr:hover > td.el-table__cell) {
-  background-color: var(--zk-surface-2);
+  background-color: var(--el-table-row-hover-bg-color, #eef1ff);
   transition: background-color var(--zk-dur-fast) var(--zk-ease-out);
 }
 

@@ -19,6 +19,12 @@ public enum OrderAction {
     /** 处理中 */
     PROCESS("PROCESS", "处理中"),
 
+    /** 挂起停表（等待客户反馈） */
+    PAUSE("PAUSE", "挂起停表"),
+
+    /** 恢复计时 */
+    RESUME("RESUME", "恢复计时"),
+
     /** 解决工单 */
     RESOLVE("RESOLVE", "解决工单"),
 
@@ -32,7 +38,10 @@ public enum OrderAction {
     COMMENT("COMMENT", "添加备注"),
 
     /** SLA 超时 */
-    OVERDUE("OVERDUE", "SLA 超时");
+    OVERDUE("OVERDUE", "SLA 超时"),
+
+    /** SLA 升级通知上级 */
+    ESCALATE("ESCALATE", "SLA 升级");
 
     private final String code;
 

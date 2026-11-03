@@ -18,7 +18,7 @@ public class OpenApiConfig {
     public OpenAPI zhiketongOpenApi() {
         return new OpenAPI().info(new Info()
                 .title("智客通 · 智能对话客服与工单管理系统 API")
-                .description("JavaEE 期末大作业后端接口文档")
+                .description("面向 B 端企业的商业化智能客服 SaaS，提供会话、知识库、工单、坐席与网页接入开放能力")
                 .version("1.0.0")
                 .contact(new Contact().name("智客通开发组")));
     }

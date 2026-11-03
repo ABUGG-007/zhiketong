@@ -12,8 +12,8 @@ import org.springframework.stereotype.Component;
 @ConfigurationProperties(prefix = "zhiketong.jwt")
 public class JwtProperties {
 
-    /** 签名密钥，HS256 要求长度不小于 32 字节 */
-    private String secret = "zhiketong-javaee-final-project-secret-key-2026";
+    /** 签名密钥，HS256 要求长度不小于 32 字节；仅作为开发兜底值，生产必须通过 JWT_SECRET 注入 */
+    private String secret = "zhiketong-saas-dev-only-secret-key-override-in-prod";
 
     /** 过期时间（小时） */
     private long expireHours = 2;

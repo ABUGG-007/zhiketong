@@ -1,9 +1,8 @@
 <template>
   <div class="zk-page">
     <PageHeader
-      eyebrow="MY SESSIONS"
       title="我的会话"
-      description="仅展示分配给本人的会话。会话数据由 M3 会话模块产生，当前按创建时间倒序分页展示。"
+      description="分配给你的会话都在这里。打开会话可查看完整历史记录并直接回复；结束后访客会收到评价邀请。"
     >
       <template #actions>
         <el-button :icon="Refresh" :loading="loading" @click="load">刷新</el-button>
@@ -12,6 +11,20 @@
 
     <div class="zk-card">
       <div class="zk-toolbar">
+        <el-select
+          v-model="filters.status"
+          placeholder="全部状态"
+          clearable
+          aria-label="按会话状态筛选"
+          @change="search"
+        >
+          <el-option
+            v-for="option in statusOptions"
+            :key="option.value"
+            :label="option.label"
+            :value="option.value"
+          />
+        </el-select>
         <div class="grow" />
         <span class="toolbar-meta" aria-live="polite">
           共 <b class="zk-num">{{ total }}</b> 条会话
@@ -25,10 +38,25 @@
         tabindex="0"
         :aria-busy="loading ? 'true' : 'false'"
       >
-        <el-table v-loading="loading" :data="rows" row-key="id" aria-label="我的会话列表">
+        <ZkSkeleton v-if="!loaded" variant="table" :rows="pageSize" :cols="6" class="table-skeleton" />
+        <el-table
+          v-else
+          v-loading="loading"
+          :data="rows"
+          row-key="id"
+          aria-label="我的会话列表"
+          :row-class-name="rowClassName"
+          :class="fadeClass"
+          @row-click="openSession"
+        >
           <el-table-column label="会话号" width="164">
             <template #default="{ row }">
               <span class="session-no">{{ row.sessionNo || row.id }}</span>
+            </template>
+          </el-table-column>
+          <el-table-column label="用户" width="120">
+            <template #default="{ row }">
+              <span class="person">{{ row.userName || '访客' }}</span>
             </template>
           </el-table-column>
           <el-table-column label="状态" width="112">
@@ -40,7 +68,7 @@
               />
             </template>
           </el-table-column>
-          <el-table-column label="评分" width="140" align="right">
+          <el-table-column label="评分" width="124" align="right">
             <template #default="{ row }">
               <span
                 v-if="Number(row.rating) > 0"
@@ -60,28 +88,39 @@
               <span v-else class="zk-muted">未评价</span>
             </template>
           </el-table-column>
-          <el-table-column label="消息数" width="96" align="right">
+          <el-table-column label="对话数" width="88" align="right">
             <template #default="{ row }">
               <span class="zk-num msg-count">{{ row.messageCount ?? 0 }}</span>
             </template>
           </el-table-column>
-          <el-table-column label="创建时间" width="166">
+          <el-table-column label="创建时间" width="158">
             <template #default="{ row }">
               <span class="cell-time">{{ formatDateTime(row.createTime) }}</span>
             </template>
           </el-table-column>
+          <el-table-column label="操作" width="104" fixed="right">
+            <template #default="{ row }">
+              <el-button link type="primary" @click.stop="openSession(row)">
+                {{ row.status === 'HUMAN' ? '回复' : '详情' }}
+              </el-button>
+            </template>
+          </el-table-column>
 
           <template #empty>
-            <div class="table-empty">
-              <div class="empty-icon" aria-hidden="true">
-                <el-icon><ChatLineSquare /></el-icon>
-              </div>
-              <p>{{ error || '暂无本人会话' }}</p>
-              <span v-if="error" class="empty-hint">请确认后端 /api/agent/sessions 已就绪</span>
-              <span v-else class="empty-hint">暂无本人会话，M3 产生数据后展示</span>
+            <ZkEmpty
+              size="sm"
+              :title="error || '暂无本人会话'"
+              :hint="
+                error
+                  ? '加载失败，请稍后重试'
+                  : filters.status
+                    ? '当前状态下没有会话'
+                    : '暂无分配给你的会话；待分配会话可在「坐席工作台」接入'
+              "
+            >
               <el-button v-if="error" @click="load">重新加载</el-button>
-              <el-button v-else @click="load">刷新列表</el-button>
-            </div>
+              <el-button v-else @click="resetFilters">查看全部会话</el-button>
+            </ZkEmpty>
           </template>
         </el-table>
       </div>
@@ -103,46 +142,136 @@
 
     <div class="page-tip">
       <i aria-hidden="true" />
-      数据来源 GET /api/agent/sessions · 仅展示本人受理的会话 · M3 会话模块产生数据后展示
+      仅展示分配给本人的会话；回复会实时推送给访客，结束会话后访客可对本次服务评分
     </div>
+
+    <SessionDrawer
+      v-model="drawerVisible"
+      :session-id="activeId"
+      role="AGENT"
+      @changed="load"
+    />
   </div>
 </template>
 
 <script setup>
-import { onMounted } from 'vue'
-import { ChatLineSquare, Refresh } from '@element-plus/icons-vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { Refresh } from '@element-plus/icons-vue'
 import PageHeader from '@/components/PageHeader.vue'
 import StatusPill from '@/components/StatusPill.vue'
+import SessionDrawer from '@/components/SessionDrawer.vue'
+import ZkSkeleton from '@/components/ZkSkeleton.vue'
+import ZkEmpty from '@/components/ZkEmpty.vue'
 import { getAgentSessions } from '@/api'
 import { usePagedList } from '@/composables/usePagedList'
 import {
   SESSION_STATUS_DICT,
+  SESSION_STATUS_OPTIONS,
   dictLabel,
   dictTone,
   formatDateTime
 } from '@/utils/dict'
 
+// 坐席只能看到本人接待的会话（人工中 / 已结束），排队中由工作台负责接入
+const statusOptions = SESSION_STATUS_OPTIONS.filter((option) =>
+  ['HUMAN', 'CLOSED'].includes(option.value)
+)
+
 const {
+  filters,
   rows,
   total,
   pageNum,
   pageSize,
   loading,
+  loaded,
   error,
   load,
+  search,
+  reset,
   changePage,
   changeSize
-} = usePagedList(getAgentSessions, {})
+} = usePagedList(getAgentSessions, { status: '' })
 
-onMounted(load)
+// 筛选 / 翻页结果到达时重播 160ms 淡入（只淡不位移，避免表格重排）
+const listTick = ref(0)
+watch(rows, () => {
+  listTick.value += 1
+})
+const fadeClass = computed(() => (listTick.value % 2 ? 'list-fade-a' : 'list-fade-b'))
+
+const drawerVisible = ref(false)
+const activeId = ref(null)
+
+function rowClassName() {
+  return 'is-clickable-row'
+}
+
+function openSession(row) {
+  activeId.value = row.id
+  drawerVisible.value = true
+}
+
+function resetFilters() {
+  reset()
+}
+
+let refreshTimer = null
+
+onMounted(() => {
+  load()
+  // 会话状态可能被访客或系统改变，30 秒静默刷新一次列表
+  refreshTimer = window.setInterval(() => load(), 30000)
+})
+
+onBeforeUnmount(() => {
+  if (refreshTimer) window.clearInterval(refreshTimer)
+})
 </script>
 
 <style scoped>
+/* 首屏骨架与真实表格同列，加载前后不跳 */
+.table-skeleton {
+  padding: 12px 14px;
+}
+
+/* 筛选结果淡入 160ms：只淡不位移，避免表格重新布局 */
+.list-fade-a {
+  animation: zk-fade-a 160ms var(--zk-ease-out);
+}
+
+.list-fade-b {
+  animation: zk-fade-b 160ms var(--zk-ease-out);
+}
+
+@keyframes zk-fade-a {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes zk-fade-b {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
 .session-no {
   font-family: 'JetBrains Mono', Consolas, monospace;
   font-size: 11.5px;
   color: var(--zk-text-2);
   font-variant-numeric: tabular-nums;
+}
+
+.person {
+  font-size: 12.5px;
+  color: var(--zk-text);
 }
 
 .rating-cell {
@@ -183,11 +312,11 @@ onMounted(load)
 }
 
 .table-scroll :deep(.el-table) {
-  min-width: 720px;
+  min-width: 860px;
 }
 
 .table-scroll :deep(.el-table__body tr:hover > td.el-table__cell) {
-  background-color: var(--zk-surface-2);
+  background-color: var(--el-table-row-hover-bg-color, #eef1ff);
   transition: background-color var(--zk-dur-fast) var(--zk-ease-out);
 }
 </style>

@@ -25,8 +25,11 @@ public class LoginUser implements Serializable {
     /** 昵称 */
     private String nickname;
 
-    /** 角色编码：ADMIN / AGENT / USER */
+    /** 角色编码：ADMIN / AGENT / USER / PLATFORM_ADMIN */
     private String roleCode;
+
+    /** 租户 ID：平台管理员为 0（跨租户），租户内用户为 tenant.id */
+    private Long tenantId;
 
     /** JWT 唯一标识，用于登出黑名单 */
     private String tokenId;

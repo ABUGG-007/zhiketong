@@ -17,7 +17,19 @@ public enum SenderType {
     AGENT("AGENT", "客服坐席"),
 
     /** 系统 */
-    SYSTEM("SYSTEM", "系统");
+    SYSTEM("SYSTEM", "系统"),
+
+    /**
+     * 内部备注：坐席记录的处理信息，仅坐席与管理端可见。
+     * <p>不进入访客侧消息分页、不进入大模型上下文，也不计入会话消息数。</p>
+     */
+    INTERNAL_NOTE("INTERNAL_NOTE", "内部备注"),
+
+    /**
+     * 组长强插：管理员在监听会话时直接对客发言（S6-B，AS-10）。
+     * <p>访客与坐席双方可见，与坐席本人发言区分展示，便于事后追溯介入人。</p>
+     */
+    SUPERVISOR("SUPERVISOR", "组长");
 
     private final String code;
 

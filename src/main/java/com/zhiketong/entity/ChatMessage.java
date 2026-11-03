@@ -1,6 +1,7 @@
 package com.zhiketong.entity;
 
 import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
@@ -22,6 +23,10 @@ import java.time.LocalDateTime;
 public class ChatMessage implements Serializable {
 
     private static final long serialVersionUID = 1L;
+
+    /** 租户 ID，由多租户拦截器在写入时按当前上下文填充 */
+    private Long tenantId;
+
 
     /** 主键 ID，数据库自增 */
     @TableId(type = IdType.AUTO)
@@ -56,4 +61,11 @@ public class ChatMessage implements Serializable {
 
     /** 创建时间 */
     private LocalDateTime createTime;
+
+    /**
+     * 应答分类（DIRECT/REFERENCE/FREE/SUGGEST/CHITCHAT/INVALID/FALLBACK）。
+     * <p>运行时字段，不落库；由 AI 应答编排写入，供接口与 WebSocket 下发展示。</p>
+     */
+    @TableField(exist = false)
+    private String answerCategory;
 }

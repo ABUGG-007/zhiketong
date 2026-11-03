@@ -11,12 +11,14 @@ import com.zhiketong.dto.RegisterRequest;
 import com.zhiketong.dto.UserVO;
 import com.zhiketong.entity.SysLoginLog;
 import com.zhiketong.entity.SysUser;
+import com.zhiketong.entity.Tenant;
 import com.zhiketong.mapper.SysLoginLogMapper;
 import com.zhiketong.mapper.SysUserMapper;
 import com.zhiketong.security.JwtToken;
 import com.zhiketong.security.JwtTokenUtil;
 import com.zhiketong.security.LoginUser;
 import com.zhiketong.security.SecurityUtils;
+import com.zhiketong.security.TenantContext;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -40,6 +42,7 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenUtil jwtTokenUtil;
     private final StringRedisTemplate stringRedisTemplate;
+    private final TenantService tenantService;
 
     /**
      * 登录：校验账号密码、状态，签发 JWT，并记录登录日志。
@@ -48,20 +51,32 @@ public class AuthService {
     public LoginResponse login(LoginRequest request, String ip, String userAgent) {
         SysUser user = findByUsername(request.getUsername());
         if (user == null) {
-            saveLoginLog(null, request.getUsername(), ip, userAgent, false, "用户不存在");
+            saveLoginLog(null, null, request.getUsername(), ip, userAgent, false, "用户不存在");
             throw new BusinessException("用户名或密码错误");
         }
         if (user.getStatus() == null || user.getStatus() != Constants.STATUS_ENABLED) {
-            saveLoginLog(user.getId(), user.getUsername(), ip, userAgent, false, "账号已被禁用");
+            saveLoginLog(user.getId(), user.getTenantId(), user.getUsername(), ip, userAgent, false, "账号已被禁用");
             throw new BusinessException(ResultCode.FORBIDDEN, "账号已被禁用，请联系管理员");
         }
         if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
-            saveLoginLog(user.getId(), user.getUsername(), ip, userAgent, false, "密码错误");
+            saveLoginLog(user.getId(), user.getTenantId(), user.getUsername(), ip, userAgent, false, "密码错误");
             throw new BusinessException("用户名或密码错误");
         }
 
+        // 租户状态校验：停用 / 欠费到期直接拦截；平台管理员跨租户不参与校验
+        boolean platformAdmin = Constants.ROLE_PLATFORM_ADMIN.equals(user.getRoleCode());
+        Long tokenTenantId = platformAdmin ? TenantContext.PLATFORM_TENANT_ID : user.getTenantId();
+        if (!platformAdmin) {
+            try {
+                tenantService.requireUsable(user.getTenantId());
+            } catch (BusinessException e) {
+                saveLoginLog(user.getId(), user.getTenantId(), user.getUsername(), ip, userAgent, false, e.getMessage());
+                throw e;
+            }
+        }
+
         JwtToken jwtToken = jwtTokenUtil.generate(
-                user.getId(), user.getUsername(), user.getNickname(), user.getRoleCode());
+                user.getId(), user.getUsername(), user.getNickname(), user.getRoleCode(), tokenTenantId);
 
         // 更新最后登录信息
         SysUser update = new SysUser();
@@ -70,14 +85,27 @@ public class AuthService {
         update.setLastLoginIp(ip);
         sysUserMapper.updateById(update);
 
-        saveLoginLog(user.getId(), user.getUsername(), ip, userAgent, true, "登录成功");
+        saveLoginLog(user.getId(), user.getTenantId(), user.getUsername(), ip, userAgent, true, "登录成功");
 
-        return LoginResponse.builder()
+        LoginResponse response = LoginResponse.builder()
                 .token(jwtToken.getToken())
                 .tokenType("Bearer")
                 .expiresIn(jwtToken.getExpiresInSeconds())
                 .user(UserVO.of(user))
                 .build();
+        if (platformAdmin) {
+            // 平台管理员 tenantId 固定为 0，前端据此进入平台管理端而非租户管理端
+            response.setTenantId(TenantContext.PLATFORM_TENANT_ID);
+            response.setTenantName("平台");
+        } else {
+            Tenant tenant = tenantService.getById(user.getTenantId());
+            if (tenant != null) {
+                response.setTenantId(tenant.getId());
+                response.setTenantName(tenant.getTenantName());
+                response.setPlanCode(tenant.getPlanCode());
+            }
+        }
+        return response;
     }
 
     /**
@@ -90,6 +118,7 @@ public class AuthService {
             throw new BusinessException(ResultCode.CONFLICT, "用户名已存在");
         }
         SysUser user = new SysUser();
+        user.setTenantId(TenantContext.DEFAULT_TENANT_ID);
         user.setUsername(request.getUsername());
         user.setPassword(passwordEncoder.encode(request.getPassword()));
         user.setNickname(request.getNickname());
@@ -154,6 +183,9 @@ public class AuthService {
         log.info("用户修改密码成功：userId={}", user.getId());
     }
 
+    /**
+     * 按用户名登录：当前约束为用户名平台内唯一（各租户管理员由平台创建，不开放同名自助注册）。
+     */
     private SysUser findByUsername(String username) {
         return sysUserMapper.selectOne(new LambdaQueryWrapper<SysUser>()
                 .eq(SysUser::getUsername, username)
@@ -163,11 +195,12 @@ public class AuthService {
     /**
      * 记录登录日志，失败不影响主流程。
      */
-    private void saveLoginLog(Long userId, String username, String ip, String userAgent,
+    private void saveLoginLog(Long userId, Long tenantId, String username, String ip, String userAgent,
                               boolean success, String message) {
         try {
             SysLoginLog loginLog = new SysLoginLog();
             loginLog.setUserId(userId);
+            loginLog.setTenantId(tenantId);
             loginLog.setUsername(username);
             loginLog.setIp(ip);
             loginLog.setUserAgent(userAgent);

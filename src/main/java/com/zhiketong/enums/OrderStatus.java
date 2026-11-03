@@ -16,6 +16,9 @@ public enum OrderStatus {
     /** 处理中 */
     PROCESSING("PROCESSING", "处理中"),
 
+    /** 等待客户反馈（SLA 停表中） */
+    WAITING_CUSTOMER("WAITING_CUSTOMER", "等待客户反馈"),
+
     /** 已解决 */
     RESOLVED("RESOLVED", "已解决"),
 

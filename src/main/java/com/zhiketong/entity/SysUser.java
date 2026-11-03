@@ -21,6 +21,10 @@ public class SysUser extends BaseEntity {
 
     private static final long serialVersionUID = 1L;
 
+    /** 租户 ID，由多租户拦截器在写入时按当前上下文填充 */
+    private Long tenantId;
+
+
     /** 登录账号 */
     private String username;
 

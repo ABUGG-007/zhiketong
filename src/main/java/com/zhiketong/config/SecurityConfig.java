@@ -55,6 +55,8 @@ public class SecurityConfig {
                 .antMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 // 公开接口
                 .antMatchers("/api/auth/login", "/api/auth/register", "/api/health", "/error").permitAll()
+                // 网页接入公开接口（悬浮球）
+                .antMatchers("/api/public/**").permitAll()
                 // 接口文档
                 .antMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html",
                         "/doc.html", "/webjars/**").permitAll()

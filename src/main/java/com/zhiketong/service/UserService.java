@@ -17,6 +17,8 @@ import com.zhiketong.entity.ChatSession;
 import com.zhiketong.entity.SysRole;
 import com.zhiketong.entity.SysUser;
 import com.zhiketong.enums.AgentOnlineStatus;
+import com.zhiketong.enums.AuditAction;
+import com.zhiketong.enums.AuditModule;
 import com.zhiketong.enums.RoleCode;
 import com.zhiketong.enums.SessionStatus;
 import com.zhiketong.mapper.AgentStatusMapper;
@@ -54,11 +56,16 @@ public class UserService {
     /** 新建坐席默认最大同时接待数 */
     private static final int DEFAULT_MAX_CONCURRENT = 5;
 
+    /** 审计对象类型：系统账号 */
+    private static final String TARGET_SYS_USER = "SYS_USER";
+
     private final SysUserMapper sysUserMapper;
     private final SysRoleMapper sysRoleMapper;
     private final AgentStatusMapper agentStatusMapper;
     private final ChatSessionMapper chatSessionMapper;
     private final PasswordEncoder passwordEncoder;
+    private final TenantUsageService tenantUsageService;
+    private final AuditLogService auditLogService;
 
     /**
      * 用户分页列表（R-06）：keyword 模糊匹配 username/nickname/phone，按 id 倒序。
@@ -76,7 +83,8 @@ public class UserService {
         String roleFilter = trimToNull(roleCode);
         if (roleFilter != null) {
             if (RoleCode.fromCode(roleFilter) == null) {
-                throw new BusinessException(ResultCode.PARAM_ERROR, "角色编码只能为 ADMIN、AGENT 或 USER");
+                throw new BusinessException(ResultCode.PARAM_ERROR,
+                        "角色编码只能为 " + RoleCode.valuesDescription());
             }
             wrapper.eq(SysUser::getRoleCode, roleFilter);
         }
@@ -121,6 +129,11 @@ public class UserService {
             throw new BusinessException(ResultCode.CONFLICT, "邮箱已被使用");
         }
 
+        // 新增坐席占用套餐坐席额度，超额时直接拦截（S4-B PL-04）
+        if (Constants.ROLE_AGENT.equals(role.getRoleCode())) {
+            tenantUsageService.assertQuota(TenantPlanService.METRIC_SEAT);
+        }
+
         SysUser user = new SysUser();
         user.setUsername(username);
         user.setPassword(passwordEncoder.encode(request.getPassword()));
@@ -143,6 +156,11 @@ public class UserService {
         }
         log.info("新增用户成功：userId={}, username={}, roleCode={}",
                 user.getId(), user.getUsername(), user.getRoleCode());
+        auditLogService.record(AuditModule.USER, AuditAction.CREATE)
+                .target(TARGET_SYS_USER, user.getId(), user.getUsername())
+                .detail("新增账号 " + user.getUsername() + "（角色 " + user.getRoleCode() + "）")
+                .after(sysUserMapper.selectById(user.getId()))
+                .save();
         return UserVO.of(sysUserMapper.selectById(user.getId()));
     }
 
@@ -220,6 +238,12 @@ public class UserService {
         if (changed) {
             wrapper.eq(SysUser::getId, id);
             sysUserMapper.update(null, wrapper);
+            auditLogService.record(AuditModule.USER, AuditAction.UPDATE)
+                    .target(TARGET_SYS_USER, id, user.getUsername())
+                    .detail("编辑账号 " + user.getUsername())
+                    .before(user)
+                    .after(sysUserMapper.selectById(id))
+                    .save();
         }
 
         String finalRoleCode = newRoleCode != null ? newRoleCode : user.getRoleCode();
@@ -267,6 +291,11 @@ public class UserService {
         }
         sysUserMapper.deleteById(id);
         log.info("删除用户成功：userId={}", id);
+        auditLogService.record(AuditModule.USER, AuditAction.DELETE)
+                .target(TARGET_SYS_USER, id, user.getUsername())
+                .detail("删除账号 " + user.getUsername() + "（角色 " + user.getRoleCode() + "）")
+                .before(user)
+                .save();
     }
 
     /**
@@ -294,6 +323,13 @@ public class UserService {
             setAgentOffline(id);
         }
         log.info("修改用户状态成功：userId={}, status={}", id, status);
+        auditLogService.record(AuditModule.USER,
+                        Constants.STATUS_ENABLED == status ? AuditAction.ENABLE : AuditAction.DISABLE)
+                .target(TARGET_SYS_USER, id, user.getUsername())
+                .detail("账号 " + user.getUsername() + " 状态 " + user.getStatus() + " -> " + status)
+                .before(user)
+                .after(sysUserMapper.selectById(id))
+                .save();
 
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("id", id);
@@ -306,12 +342,16 @@ public class UserService {
      */
     @Transactional(rollbackFor = Exception.class)
     public void resetPassword(Long id, UserPasswordResetRequest request) {
-        getExistingUser(id);
+        SysUser user = getExistingUser(id);
         LambdaUpdateWrapper<SysUser> wrapper = new LambdaUpdateWrapper<SysUser>()
                 .eq(SysUser::getId, id)
                 .set(SysUser::getPassword, passwordEncoder.encode(request.getNewPassword()));
         sysUserMapper.update(null, wrapper);
         log.info("重置用户密码成功：userId={}", id);
+        auditLogService.record(AuditModule.USER, AuditAction.RESET_PASSWORD)
+                .target(TARGET_SYS_USER, id, user.getUsername())
+                .detail("重置账号 " + user.getUsername() + " 的登录密码")
+                .save();
     }
 
     /**
@@ -334,6 +374,10 @@ public class UserService {
                 .last("LIMIT 1"));
         if (role == null || role.getStatus() == null || role.getStatus() != Constants.STATUS_ENABLED) {
             throw new BusinessException(ResultCode.PARAM_ERROR, "角色不存在或已停用");
+        }
+        if (Constants.ROLE_PLATFORM_ADMIN.equals(role.getRoleCode())) {
+            // 平台管理员账号只能由平台端开通，租户管理员不可自行创建
+            throw new BusinessException(ResultCode.FORBIDDEN, "平台管理员账号不允许在租户内创建");
         }
         return role;
     }
