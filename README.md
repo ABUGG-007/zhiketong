@@ -4,7 +4,7 @@
 
 后端 Spring Boot 2.7 + MyBatis-Plus + MySQL 8 + Redis 6 + WebSocket + JWT，前端 Vue3 + Element Plus，访客端为可嵌入的原生 H5。
 
-![登录页](docs/screenshots/11-login-v3.png)
+![登录页](docs/screenshots/readme/01-login.png)
 
 ## 能力概览
 
@@ -17,6 +17,60 @@
 - **数据运营**：实时大屏（WebSocket 推送）、运营指标口径、告警规则与组长监听、客户之声 VOC 聚类与词云。
 - **SaaS 能力**：`tenant_id` 多租户隔离（拦截器自动注入）、套餐额度与用量、平台租户运营端、操作审计。
 - **商家接入**：JS 悬浮球 SDK、独立链接、开放 API（HMAC 签名 + 来源白名单 + 限流）三种形态。
+
+## 界面一览
+
+> 以下截图由 `scripts/capture-screenshots.mjs` 通过 Chrome DevTools Protocol 自动采集，与当前代码实现保持一致。
+
+### 运营看板
+
+数据看板汇总今日会话与工单、待接入、超时工单、在线坐席、知识条目与套餐用量，并给出近 7 日趋势和坐席实时状态。
+
+![数据看板](docs/screenshots/readme/02-admin-dashboard.png)
+
+实时大屏通过 WebSocket 推送排队人数、最长排队时长、在线坐席与 AI/人工接待情况，支持全屏投屏与布局配置；客户之声展示未命中问法的聚类主题、词云与渠道分布。
+
+| 实时大屏 | 客户之声 |
+|---|---|
+| ![实时大屏](docs/screenshots/readme/07-admin-screen.png) | ![客户之声](docs/screenshots/readme/08-admin-voc.png) |
+
+### 在线客服与坐席工作台
+
+会话管理按状态、渠道与时间筛选会话，支持查看消息、转接、结束与满意度；坐席工作台聚合接待队列、会话详情、快捷回复与实时推荐答案。
+
+| 会话管理 | 坐席工作台 |
+|---|---|
+| ![会话管理](docs/screenshots/readme/03-admin-sessions.png) | ![坐席工作台](docs/screenshots/readme/11-agent-workbench.png) |
+
+### 知识库与工单
+
+知识库支持多级分类、相似问法、命中测试、启用停用与未命中转化；工单中心提供六状态流转、SLA 计时、字段模板与流转日志。
+
+| 知识库 | 工单中心 |
+|---|---|
+| ![知识库](docs/screenshots/readme/04-admin-knowledge.png) | ![工单中心](docs/screenshots/readme/05-admin-orders.png) |
+
+### 智能质检与平台运营
+
+智能质检按四类规则逐条打分并给出证据与建议，支持人工复核与人机对比；平台运营端管理租户开通、套餐、额度水位与审计。
+
+| 智能质检 | 租户与套餐 |
+|---|---|
+| ![智能质检](docs/screenshots/readme/06-admin-quality.png) | ![租户与套餐](docs/screenshots/readme/10-platform-tenants.png) |
+
+### 网页接入与访客端
+
+接入方式页维护 JS 悬浮球、独立链接与 API 三种形态，可配置主题色、位置、欢迎语与来源白名单，并提供实时预览；访客在自己网站通过悬浮球直接发起咨询。
+
+| 接入方式 | 访客端悬浮球 |
+|---|---|
+| ![接入方式](docs/screenshots/readme/09-admin-embed.png) | ![访客端悬浮球](docs/screenshots/readme/13-embed-widget.png) |
+
+用户端提供自助咨询、我的会话、我的工单与个人资料；管理端与访客端在移动端自适应为单列布局。
+
+| 用户端 | 移动端 |
+|---|---|
+| ![用户端](docs/screenshots/readme/12-user-home.png) | ![移动端](docs/screenshots/readme/14-mobile-dashboard.png) |
 
 ## 技术栈
 
@@ -44,8 +98,8 @@ zhiketong/
 ├── frontend/                # Vue3 + Element Plus（admin / agent / user / platform 四套入口）
 │   └── scripts/build.mjs    # 构建脚本（纯 JS，无需 esbuild 子进程）
 ├── sql/                     # 建表与增量脚本 01→20
-├── docs/                    # 产品路线图、数据库设计、接口与 WS 协议
-├── scripts/                 # 零依赖冒烟测试
+├── docs/                    # 产品路线图、数据库设计、接口与 WS 协议、界面截图
+├── scripts/                 # 冒烟测试与界面截图采集
 ├── serve-frontend.mjs       # 前端静态服务（brotli/gzip 预压缩 + /api、/ws 代理）
 └── pom.xml
 ```
@@ -134,3 +188,4 @@ node serve-frontend.mjs
 
 - 前端构建关闭 esbuild（沙箱下无法启动其子进程），改用纯 JS 的 terser 压缩、lightningcss 压缩 CSS，并按 Vue / Element Plus / axios / 业务视图分包，路由懒加载；产物由 `serve-frontend.mjs` 预压缩（brotli + gzip）并返回长期缓存头。
 - 后端默认 info 日志级别、SQL 日志走 slf4j；需要排查时用 `LOG_LEVEL_SQL=debug`、`LOG_LEVEL_APP=debug` 打开。
+- 界面截图可用 `node scripts/capture-screenshots.mjs docs/screenshots/readme` 重新采集（需前后端已启动），避免文档截图与实现脱节。
