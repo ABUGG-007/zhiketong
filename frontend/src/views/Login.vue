@@ -582,22 +582,22 @@ onBeforeUnmount(() => {
   background-repeat: no-repeat;
 }
 
-/* 大视口 / 矮视口：插画不随 cover 放大，锁定设计稿原始尺寸并收向左下角；
-   宽度同时受「视口高 - 460px」约束，保证插画顶边始终落在特性文案下方，
-   边缘用遮罩淡入底色，避免硬接缝 */
+/* 大视口 / 矮视口：插画按 1536:1024 比例、以「场景顶边落在能力矩阵下方约 60px」为准缩放。
+   图片上 47% 是空背景，因此用 height 反推尺寸，遮罩只淡化最上方 18% 的过渡区 */
 @media (min-width: 1600px), (min-height: 1100px), (max-height: 1010px) {
   .login-bg::before {
+    --lp-art-h: clamp(400px, calc((100vh - 440px) * 1.8), 980px);
     inset: auto auto 0 0;
-    width: min(1536px, 100%, max(360px, calc((100vh - 460px) * 2.826)));
-    aspect-ratio: 1536 / 1024;
+    width: min(100%, calc(var(--lp-art-h) * 1.5));
+    height: var(--lp-art-h);
     background-position: left bottom;
     background-size: 100% 100%;
     -webkit-mask-image:
-      linear-gradient(to bottom, transparent 0, #000 140px),
-      linear-gradient(to right, #000 calc(100% - 180px), transparent 100%);
+      linear-gradient(to bottom, transparent 0, #000 18%),
+      linear-gradient(to right, #000 calc(100% - 160px), transparent 100%);
     mask-image:
-      linear-gradient(to bottom, transparent 0, #000 140px),
-      linear-gradient(to right, #000 calc(100% - 180px), transparent 100%);
+      linear-gradient(to bottom, transparent 0, #000 18%),
+      linear-gradient(to right, #000 calc(100% - 160px), transparent 100%);
     -webkit-mask-composite: source-in;
     mask-composite: intersect;
   }
@@ -607,8 +607,11 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: stretch;
   justify-content: space-between;
-  gap: 24px;
-  padding: 0 95px 0 108px;
+  gap: clamp(32px, 4vw, 80px);
+  width: 100%;
+  max-width: 1520px;
+  margin: 0 auto;
+  padding: 0 clamp(56px, 6.5vw, 112px);
   min-height: 100vh;
   min-height: 100dvh;
 }
@@ -617,46 +620,46 @@ onBeforeUnmount(() => {
 .intro {
   flex: 1 1 auto;
   min-width: 0;
-  max-width: 780px;
-  padding: 68px 0 48px;
+  max-width: 720px;
+  padding: clamp(44px, 5.6vh, 72px) 0 clamp(28px, 5vh, 56px);
 }
 
 .brand {
   display: flex;
-  align-items: flex-start;
-  gap: 10px;
+  align-items: center;
+  gap: 14px;
 }
 
 .brand-mark {
-  width: 64px;
-  height: 64px;
-  flex: 0 0 64px;
+  width: 58px;
+  height: 58px;
+  flex: 0 0 58px;
   display: block;
   filter: drop-shadow(0 8px 16px rgba(16, 104, 253, 0.18));
 }
 
 .brand-text {
-  padding-top: 4px;
+  padding-top: 0;
 }
 
 .brand-name {
-  font-size: 34px;
-  line-height: 1.2;
+  font-size: 31px;
+  line-height: 1.15;
   font-weight: 700;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.2px;
   color: #071433;
 }
 
 .brand-slogan {
-  margin-top: 10px;
-  font-size: 12.5px;
-  letter-spacing: 3px;
+  margin-top: 7px;
+  font-size: 13px;
+  letter-spacing: 1.6px;
   color: #8b98ac;
 }
 
 .headline {
-  margin-top: 71px;
-  font-size: 44px;
+  margin-top: 46px;
+  font-size: clamp(34px, 2.5vw, 44px);
   line-height: 1.2;
   font-weight: 700;
   letter-spacing: -0.5px;
@@ -664,28 +667,20 @@ onBeforeUnmount(() => {
 }
 
 .subline {
-  margin-top: 8px;
-  font-size: 21px;
-  line-height: 1.5;
+  margin-top: 12px;
+  font-size: clamp(16px, 1.15vw, 20px);
+  line-height: 1.6;
   color: #66788f;
 }
 
 .features {
-  display: flex;
-  align-items: flex-start;
-  margin: 36px 0 0;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 20px 18px;
+  max-width: 700px;
+  margin: 38px 0 0;
   padding: 0;
   list-style: none;
-}
-
-.feature:nth-child(1) {
-  width: 194px;
-}
-.feature:nth-child(2) {
-  width: 178px;
-}
-.feature:nth-child(3) {
-  width: 170px;
 }
 
 .feature-icon {
@@ -702,8 +697,8 @@ onBeforeUnmount(() => {
 }
 
 .feature-title {
-  margin-top: 13px;
-  font-size: 17px;
+  margin-top: 12px;
+  font-size: 16.5px;
   line-height: 1.2;
   font-weight: 600;
   color: #15233b;
@@ -713,19 +708,18 @@ onBeforeUnmount(() => {
   display: flex;
   flex-direction: column;
   margin-top: 6px;
-  font-size: 14px;
-  line-height: 22px;
+  font-size: 13.5px;
+  line-height: 1.68;
   color: #93a4b8;
-  white-space: nowrap;
+  white-space: normal;
 }
 
 /* ---------------- 右侧登录卡片 ---------------- */
 .auth {
-  flex: 0 0 557px;
+  flex: 0 0 clamp(440px, 36vw, 540px);
   display: flex;
   align-items: center;
-  /* 上下留白不对称，使卡片顶边落在设计稿 y=182 基准 */
-  padding: 80px 0 55px;
+  padding: clamp(40px, 7vh, 80px) 0;
 }
 
 .card {
@@ -1310,12 +1304,6 @@ onBeforeUnmount(() => {
 
 /* ---------------- 响应式（必须与基础规则同处 scoped 块，否则选择器优先级不足） ---------------- */
 @media (max-width: 1440px) {
-  .login-shell {
-    padding: 0 64px 0 72px;
-  }
-  .auth {
-    flex-basis: 520px;
-  }
   .card {
     padding: 54px 44px 0;
   }
@@ -1325,27 +1313,15 @@ onBeforeUnmount(() => {
   .subline {
     font-size: 19px;
   }
-  .feature:nth-child(1) {
-    width: 178px;
-  }
-  .feature:nth-child(2) {
-    width: 164px;
-  }
-  .feature:nth-child(3) {
-    width: 156px;
-  }
-  .feature-desc {
-    white-space: normal;
-  }
 }
 
 @media (max-width: 1180px) {
   .login-shell {
-    gap: 16px;
+    gap: 24px;
     padding: 0 40px;
   }
   .auth {
-    flex-basis: 460px;
+    flex-basis: 440px;
     padding: 40px 0;
   }
   .card {
@@ -1358,19 +1334,18 @@ onBeforeUnmount(() => {
     font-size: 17px;
   }
   .brand-mark {
-    width: 56px;
-    height: 56px;
-    flex-basis: 56px;
+    width: 50px;
+    height: 50px;
+    flex-basis: 50px;
   }
   .brand-name {
-    font-size: 30px;
+    font-size: 27px;
   }
   .features {
-    gap: 18px;
+    gap: 16px 14px;
   }
-  .feature:nth-child(n) {
-    flex: 1 1 0;
-    width: auto;
+  .feature-desc {
+    font-size: 13px;
   }
   .tabs {
     gap: 40px;
@@ -1386,7 +1361,7 @@ onBeforeUnmount(() => {
     display: none;
   }
   .auth {
-    flex: 0 1 557px;
+    flex: 0 1 520px;
     /* 允许收缩到容器宽，避免子元素 min-content 撑破小屏 */
     min-width: 0;
     width: 100%;
