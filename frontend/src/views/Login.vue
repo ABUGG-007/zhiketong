@@ -1,9 +1,20 @@
 <template>
   <div class="login-page">
-    <!-- 背景：蓝白渐变 + 3D 智能客服插画（已压缩为 WebP） -->
+    <!-- 背景：纯渐变底图（独立素材），3D 插画由 .login-shell 内的 .login-art 单独摆放 -->
     <div class="login-bg" aria-hidden="true" />
 
     <div class="login-shell">
+      <!-- 插画：独立素材，按设计稿位置（左 113、底 154、宽 589）摆放 -->
+      <img
+        class="login-art"
+        src="/login/login-robot.webp"
+        alt=""
+        aria-hidden="true"
+        width="613"
+        height="398"
+        decoding="async"
+      />
+
       <!-- 左侧：品牌、主标题、能力矩阵 -->
       <section class="intro">
         <header class="brand">
@@ -19,9 +30,28 @@
 
         <ul class="features">
           <li v-for="item in capabilities" :key="item.title" class="feature">
+            <svg
+              v-if="item.svg"
+              class="feature-icon feature-icon--robot"
+              viewBox="0 0 32 32"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.7"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <rect x="6.6" y="11" width="18.8" height="14.6" rx="4.6" />
+              <path d="M16 11V7" />
+              <circle cx="16" cy="4.9" r="1.5" />
+              <path d="M6.6 16.4H4.9v3.8h1.7" />
+              <path d="M25.4 16.4h1.7v3.8h-1.7" />
+              <circle cx="12.4" cy="18.4" r="1.5" fill="currentColor" stroke="none" />
+              <circle cx="19.6" cy="18.4" r="1.5" fill="currentColor" stroke="none" />
+            </svg>
             <img
+              v-else
               class="feature-icon"
-              :class="item.iconClass"
               :src="item.icon"
               alt=""
               width="34"
@@ -352,8 +382,7 @@ const capabilities = [
   {
     title: '智能对话',
     desc: ['基于知识库自动问答', '高效解决客户问题'],
-    icon: '/brand-mark.png',
-    iconClass: 'feature-icon--mark'
+    svg: true
   },
   {
     title: '知识库管理',
@@ -546,190 +575,206 @@ onBeforeUnmount(() => {
 
 <style scoped>
 /* =========================================================
-   登录页 · 蓝白 3D 视觉（对齐设计稿 1536×1024 基准）
+   登录页 · 设计稿 1536×1024 像素还原
+   --s 为设计稿缩放系数：视口宽 1536 时恒为 1，其余尺寸按比例整体缩放
    ========================================================= */
 .login-page {
-  --lp-blue: #1068fd;
+  --lp-blue: #126cfe;
   --lp-blue-deep: #0b57d0;
   --lp-ink: #0b1b3c;
-  --lp-line: #e6ecf2;
+  --lp-line: #edf0f7;
   --lp-placeholder: #a9b6c8;
+  /* 1 设计像素 = 多少真实像素：按宽/高两个方向取较小值，保证 1536×1024 设计稿等比缩放不溢出 */
+  --u: min(1.4px, calc(100vw / 1536), calc(100vh / 1024));
   position: relative;
   min-height: 100vh;
   min-height: 100dvh;
   isolation: isolate;
-  overflow-x: hidden;
+  overflow: hidden;
 }
 
+/* 背景：独立素材，等比铺满视口 */
 .login-bg {
   position: fixed;
   inset: 0;
   z-index: -1;
-  /* 底色：与背景图边缘采样色对齐，大视口下承接插画层之外的区域 */
-  background:
-    radial-gradient(120% 85% at 80% 26%, rgba(186, 216, 250, 0.5), rgba(186, 216, 250, 0) 62%),
-    linear-gradient(180deg, #f5fafe 0%, #eef5fd 60%, #edf4fd 100%);
-}
-
-.login-bg::before {
-  content: '';
-  position: absolute;
-  inset: 0;
+  background-color: #eef5fd;
   background-image: url('/login/login-bg.webp');
-  /* 插画锚定底部，保证标题与能力矩阵不被 3D 主体遮挡 */
-  background-position: center bottom;
+  background-position: center center;
   background-size: cover;
   background-repeat: no-repeat;
 }
 
-/* 大视口 / 矮视口：插画按 1536:1024 比例、以「场景顶边落在能力矩阵下方约 60px」为准缩放。
-   图片上 47% 是空背景，因此用 height 反推尺寸，遮罩只淡化最上方 18% 的过渡区 */
-@media (min-width: 1600px), (min-height: 1100px), (max-height: 1010px) {
-  .login-bg::before {
-    --lp-art-h: clamp(400px, calc((100vh - 440px) * 1.8), 980px);
-    inset: auto auto 0 0;
-    width: min(100%, calc(var(--lp-art-h) * 1.5));
-    height: var(--lp-art-h);
-    background-position: left bottom;
-    background-size: 100% 100%;
-    -webkit-mask-image:
-      linear-gradient(to bottom, transparent 0, #000 18%),
-      linear-gradient(to right, #000 calc(100% - 160px), transparent 100%);
-    mask-image:
-      linear-gradient(to bottom, transparent 0, #000 18%),
-      linear-gradient(to right, #000 calc(100% - 160px), transparent 100%);
-    -webkit-mask-composite: source-in;
-    mask-composite: intersect;
-  }
+/* 插画：独立素材，按设计稿位置（左 98、底 122、宽 640）摆放 */
+.login-art {
+  position: absolute;
+  z-index: 0;
+  left: calc(113 * var(--u));
+  bottom: calc(154 * var(--u));
+  width: calc(589 * var(--u));
+  height: auto;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-drag: none;
 }
 
 .login-shell {
-  display: flex;
-  align-items: stretch;
-  justify-content: space-between;
-  gap: clamp(32px, 4vw, 80px);
-  width: 100%;
-  max-width: 1520px;
+  position: relative;
+  width: calc(1536 * var(--u));
+  max-width: 100%;
   margin: 0 auto;
-  padding: 0 clamp(56px, 6.5vw, 112px);
   min-height: 100vh;
   min-height: 100dvh;
 }
 
-/* ---------------- 左侧 ---------------- */
+/* ---------------- 左侧：按设计稿坐标（1536×1024）定位 ---------------- */
 .intro {
-  flex: 1 1 auto;
-  min-width: 0;
-  max-width: 720px;
-  padding: clamp(44px, 5.6vh, 72px) 0 clamp(28px, 5vh, 56px);
+  position: absolute;
+  inset: 0;
+  z-index: 1;
 }
 
 .brand {
-  display: flex;
-  align-items: center;
-  gap: 14px;
+  position: absolute;
+  left: calc(105 * var(--u));
+  top: calc(70 * var(--u));
+  width: calc(54 * var(--u));
+  height: calc(54 * var(--u));
 }
 
 .brand-mark {
-  width: 58px;
-  height: 58px;
-  flex: 0 0 58px;
   display: block;
-  filter: drop-shadow(0 8px 16px rgba(16, 104, 253, 0.18));
+  width: 100%;
+  height: 100%;
+  filter: drop-shadow(0 calc(8 * var(--u)) calc(16 * var(--u)) rgba(16, 104, 253, 0.18));
 }
 
 .brand-text {
-  padding-top: 0;
+  position: absolute;
+  left: calc(69 * var(--u));
+  top: calc(8.5 * var(--u));
+  padding: 0;
 }
 
 .brand-name {
-  font-size: 31px;
-  line-height: 1.15;
+  font-size: calc(32.5 * var(--u));
+  line-height: 1.2;
   font-weight: 700;
-  letter-spacing: 0.2px;
+  letter-spacing: calc(0.3 * var(--u));
   color: #071433;
+  white-space: nowrap;
 }
 
 .brand-slogan {
-  margin-top: 7px;
-  font-size: 13px;
-  letter-spacing: 1.6px;
+  margin-top: calc(7 * var(--u));
+  font-size: calc(14 * var(--u));
+  line-height: calc(20 * var(--u));
+  letter-spacing: calc(3.9 * var(--u));
   color: #8b98ac;
+  white-space: nowrap;
 }
 
 .headline {
-  margin-top: 46px;
-  font-size: clamp(34px, 2.5vw, 44px);
+  position: absolute;
+  left: calc(108 * var(--u));
+  top: calc(213 * var(--u));
+  margin: 0;
+  font-size: calc(44 * var(--u));
   line-height: 1.2;
   font-weight: 700;
-  letter-spacing: -0.5px;
+  letter-spacing: calc(-0.6 * var(--u));
   color: var(--lp-ink);
+  white-space: nowrap;
 }
 
 .subline {
-  margin-top: 12px;
-  font-size: clamp(16px, 1.15vw, 20px);
-  line-height: 1.6;
+  position: absolute;
+  left: calc(108 * var(--u));
+  top: calc(271 * var(--u));
+  margin: 0;
+  font-size: calc(21 * var(--u));
+  line-height: 1.5;
   color: #66788f;
+  white-space: nowrap;
 }
 
 .features {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 20px 18px;
-  max-width: 700px;
-  margin: 38px 0 0;
+  position: absolute;
+  left: calc(108 * var(--u));
+  top: calc(341 * var(--u));
+  display: flex;
+  margin: 0;
   padding: 0;
   list-style: none;
 }
 
-.feature-icon {
-  display: block;
-  width: auto;
-  height: 32px;
-  object-fit: contain;
-  filter: drop-shadow(0 6px 10px rgba(16, 104, 253, 0.14));
+.feature {
+  flex: 0 0 auto;
 }
 
-.feature-icon--mark {
-  width: 32px;
-  height: 32px;
+.feature:nth-child(1) {
+  width: calc(194 * var(--u));
+}
+.feature:nth-child(2) {
+  width: calc(178 * var(--u));
+}
+.feature:nth-child(3) {
+  width: calc(170 * var(--u));
+}
+.feature:nth-child(4) {
+  width: auto;
+}
+
+.feature-icon {
+  display: block;
+  width: calc(30 * var(--u));
+  height: calc(30 * var(--u));
+  object-fit: contain;
+  filter: drop-shadow(0 calc(6 * var(--u)) calc(10 * var(--u)) rgba(16, 104, 253, 0.14));
+}
+
+.feature-icon--robot {
+  color: #2f6bff;
+  filter: none;
 }
 
 .feature-title {
-  margin-top: 12px;
-  font-size: 16.5px;
+  margin-top: calc(15 * var(--u));
+  font-size: calc(17 * var(--u));
   line-height: 1.2;
   font-weight: 600;
   color: #15233b;
+  white-space: nowrap;
 }
 
 .feature-desc {
   display: flex;
   flex-direction: column;
-  margin-top: 6px;
-  font-size: 13.5px;
-  line-height: 1.68;
+  margin-top: calc(9 * var(--u));
+  font-size: calc(14 * var(--u));
+  line-height: calc(21.5 * var(--u));
   color: #93a4b8;
-  white-space: normal;
+  white-space: nowrap;
 }
 
 /* ---------------- 右侧登录卡片 ---------------- */
 .auth {
-  flex: 0 0 clamp(440px, 36vw, 540px);
-  display: flex;
-  align-items: center;
-  padding: clamp(40px, 7vh, 80px) 0;
+  position: absolute;
+  z-index: 2;
+  left: calc(886 * var(--u));
+  top: calc(50% + 11 * var(--u));
+  transform: translateY(-50%);
+  width: calc(556 * var(--u));
 }
 
 .card {
   width: 100%;
   background: #ffffff;
-  border-radius: 14px;
-  padding: 62px 54px 0;
+  border-radius: calc(10 * var(--u));
+  padding: calc(65 * var(--u)) calc(53 * var(--u)) calc(46 * var(--u));
   box-shadow:
-    0 30px 68px -40px rgba(13, 72, 160, 0.28),
-    0 2px 10px rgba(13, 72, 160, 0.04);
+    0 calc(30 * var(--u)) calc(68 * var(--u)) calc(-40 * var(--u)) rgba(13, 72, 160, 0.28),
+    0 calc(2 * var(--u)) calc(10 * var(--u)) rgba(13, 72, 160, 0.04);
 }
 
 /* 登录页五个区块以 60ms 依次浮现（每个 420ms，进场 ease-out，只播一次） */
@@ -766,18 +811,19 @@ onBeforeUnmount(() => {
 .tabs {
   display: flex;
   align-items: flex-end;
-  gap: 53px;
+  gap: calc(51 * var(--u));
+  padding-left: calc(11 * var(--u));
   border-bottom: 1px solid #eef1f6;
 }
 
 .tab {
   position: relative;
-  padding: 0 7px 16px;
+  padding: 0 calc(7 * var(--u)) calc(16 * var(--u));
   border: 0;
   background: transparent;
   font-family: inherit;
-  font-size: 20px;
-  line-height: 28px;
+  font-size: calc(20 * var(--u));
+  line-height: calc(28 * var(--u));
   font-weight: 600;
   color: #3b465c;
   cursor: pointer;
@@ -805,17 +851,17 @@ onBeforeUnmount(() => {
 
 /* 表单 */
 .form {
-  margin-top: 44px;
+  margin-top: calc(41 * var(--u));
 }
 
 .field {
   display: flex;
   align-items: center;
-  gap: 25px;
-  height: 50px;
-  padding: 0 16px;
+  gap: calc(18 * var(--u));
+  height: calc(50 * var(--u));
+  padding: 0 calc(14 * var(--u));
   border: 1px solid var(--lp-line);
-  border-radius: 9px;
+  border-radius: calc(9 * var(--u));
   background: #ffffff;
   transition:
     border-color var(--zk-dur-base) var(--zk-ease-out),
@@ -823,7 +869,7 @@ onBeforeUnmount(() => {
 }
 
 .field + .field {
-  margin-top: 25px;
+  margin-top: calc(25 * var(--u));
 }
 
 .field:hover {
@@ -841,9 +887,9 @@ onBeforeUnmount(() => {
 
 .field-icon {
   display: flex;
-  flex: 0 0 18px;
-  width: 18px;
-  height: 18px;
+  flex: 0 0 calc(20 * var(--u));
+  width: calc(20 * var(--u));
+  height: calc(20 * var(--u));
   color: #8d9cb1;
   transition: color var(--zk-dur-base) var(--zk-ease-out);
 }
@@ -866,7 +912,7 @@ onBeforeUnmount(() => {
   padding: 0;
   background: transparent;
   font-family: inherit;
-  font-size: 16px;
+  font-size: calc(16 * var(--u));
   color: #1b2740;
   outline: none;
 }
@@ -882,10 +928,10 @@ onBeforeUnmount(() => {
 
 .eye {
   display: grid;
-  flex: 0 0 22px;
+  flex: 0 0 calc(22 * var(--u));
   place-items: center;
-  width: 22px;
-  height: 22px;
+  width: calc(22 * var(--u));
+  height: calc(22 * var(--u));
   padding: 0;
   border: 0;
   background: transparent;
@@ -900,8 +946,8 @@ onBeforeUnmount(() => {
 
 .eye svg {
   grid-area: 1 / 1;
-  width: 20px;
-  height: 20px;
+  width: calc(20 * var(--u));
+  height: calc(20 * var(--u));
 }
 
 /* 密码小眼睛：切换时像眨一下眼，160ms 内完成（模仿 83 密码小眼睛） */
@@ -921,14 +967,14 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-top: 25px;
+  margin-top: calc(27 * var(--u));
 }
 
 .remember {
   display: inline-flex;
   align-items: center;
-  gap: 12px;
-  font-size: 14px;
+  gap: calc(12 * var(--u));
+  font-size: calc(14 * var(--u));
   color: #4c586c;
   cursor: pointer;
   user-select: none;
@@ -944,12 +990,12 @@ onBeforeUnmount(() => {
 
 .checkbox {
   display: grid;
-  flex: 0 0 19px;
+  flex: 0 0 calc(19 * var(--u));
   place-items: center;
-  width: 19px;
-  height: 19px;
+  width: calc(19 * var(--u));
+  height: calc(19 * var(--u));
   border: 1.5px solid #ccd6e3;
-  border-radius: 5px;
+  border-radius: calc(5 * var(--u));
   background: #ffffff;
   color: #ffffff;
   transition:
@@ -958,8 +1004,8 @@ onBeforeUnmount(() => {
 }
 
 .checkbox svg {
-  width: 14px;
-  height: 14px;
+  width: calc(14 * var(--u));
+  height: calc(14 * var(--u));
   opacity: 0;
   transform: scale(0.7);
   transition:
@@ -986,7 +1032,7 @@ onBeforeUnmount(() => {
   border: 0;
   background: transparent;
   font-family: inherit;
-  font-size: 14px;
+  font-size: calc(14 * var(--u));
   color: var(--lp-blue);
   cursor: pointer;
   transition: color 160ms ease;
@@ -1000,22 +1046,22 @@ onBeforeUnmount(() => {
 /* 错误提示：常驻 34px 占位，出现时只滑下淡入，布局高度不变 */
 .error-slot {
   position: relative;
-  height: 34px;
+  height: calc(34 * var(--u));
 }
 
 .form-error {
   position: absolute;
-  top: 3px;
+  top: calc(3 * var(--u));
   right: 0;
   left: 0;
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 4px 10px;
+  gap: calc(8 * var(--u));
+  padding: calc(4 * var(--u)) calc(10 * var(--u));
   border: 1px solid #ffd6de;
-  border-radius: 9px;
+  border-radius: calc(9 * var(--u));
   background: #fff5f7;
-  font-size: 12.5px;
+  font-size: calc(12.5 * var(--u));
   line-height: 1.5;
   color: #c81e3c;
   white-space: nowrap;
@@ -1024,9 +1070,9 @@ onBeforeUnmount(() => {
 }
 
 .form-error svg {
-  flex: 0 0 16px;
-  width: 16px;
-  height: 16px;
+  flex: 0 0 calc(16 * var(--u));
+  width: calc(16 * var(--u));
+  height: calc(16 * var(--u));
 }
 
 /* 提示固定单行，超出省略：保证错误区高度恒定，按钮不会被挤动 */
@@ -1062,21 +1108,21 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: calc(8 * var(--u));
   width: 100%;
-  height: 49px;
-  margin-top: 6px;
+  height: calc(49 * var(--u));
+  margin-top: calc(4 * var(--u));
   padding: 0;
   border: 0;
-  border-radius: 9px;
+  border-radius: calc(9 * var(--u));
   background: var(--lp-blue);
   color: #ffffff;
   font-family: inherit;
-  font-size: 18px;
+  font-size: calc(18 * var(--u));
   font-weight: 600;
-  letter-spacing: 2px;
+  letter-spacing: calc(2 * var(--u));
   cursor: pointer;
-  box-shadow: 0 12px 24px -14px rgba(16, 104, 253, 0.9);
+  box-shadow: 0 calc(12 * var(--u)) calc(24 * var(--u)) calc(-14 * var(--u)) rgba(18, 108, 254, 0.9);
   transition:
     background-color 160ms ease,
     box-shadow 160ms ease,
@@ -1215,9 +1261,9 @@ onBeforeUnmount(() => {
 .divider {
   display: flex;
   align-items: center;
-  gap: 18px;
-  margin-top: 40px;
-  font-size: 14px;
+  gap: calc(18 * var(--u));
+  margin-top: calc(40 * var(--u));
+  font-size: calc(14 * var(--u));
   color: #97a3b5;
   white-space: nowrap;
 }
@@ -1233,9 +1279,9 @@ onBeforeUnmount(() => {
 .sso {
   display: grid;
   place-items: center;
-  width: 46px;
-  height: 46px;
-  margin: 21px auto 0;
+  width: calc(46 * var(--u));
+  height: calc(46 * var(--u));
+  margin: calc(19 * var(--u)) auto 0;
   border: 0;
   border-radius: 50%;
   background: rgba(16, 104, 253, 0.06);
@@ -1252,14 +1298,14 @@ onBeforeUnmount(() => {
 }
 
 .sso-shield {
-  width: 22px;
-  height: 22px;
+  width: calc(26 * var(--u));
+  height: calc(26 * var(--u));
 }
 
 .sso-label {
-  margin-top: 9px;
-  font-size: 13px;
-  line-height: 20px;
+  margin-top: calc(12 * var(--u));
+  font-size: calc(13 * var(--u));
+  line-height: calc(20 * var(--u));
   text-align: center;
   color: #6d7b8e;
 }
@@ -1268,23 +1314,23 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 2px;
-  margin-top: 30px;
-  padding-bottom: 64px;
-  font-size: 14px;
-  line-height: 22px;
+  gap: calc(2 * var(--u));
+  margin-top: calc(45 * var(--u));
+  padding-bottom: 0;
+  font-size: calc(14 * var(--u));
+  line-height: calc(22 * var(--u));
   color: #9aa6b8;
   flex-wrap: wrap;
 }
 
 .legal .link {
-  font-size: 14px;
+  font-size: calc(14 * var(--u));
 }
 
 .legal-shield {
-  width: 15px;
-  height: 15px;
-  margin-right: 6px;
+  width: calc(15 * var(--u));
+  height: calc(15 * var(--u));
+  margin-right: calc(6 * var(--u));
   color: #9aa6b8;
 }
 
@@ -1302,77 +1348,37 @@ onBeforeUnmount(() => {
   }
 }
 
-/* ---------------- 响应式（必须与基础规则同处 scoped 块，否则选择器优先级不足） ---------------- */
-@media (max-width: 1440px) {
-  .card {
-    padding: 54px 44px 0;
-  }
-  .headline {
-    font-size: 40px;
-  }
-  .subline {
-    font-size: 19px;
-  }
-}
-
-@media (max-width: 1180px) {
-  .login-shell {
-    gap: 24px;
-    padding: 0 40px;
-  }
-  .auth {
-    flex-basis: 440px;
-    padding: 40px 0;
-  }
-  .card {
-    padding: 46px 36px 0;
-  }
-  .headline {
-    font-size: 34px;
-  }
-  .subline {
-    font-size: 17px;
-  }
-  .brand-mark {
-    width: 50px;
-    height: 50px;
-    flex-basis: 50px;
-  }
-  .brand-name {
-    font-size: 27px;
-  }
-  .features {
-    gap: 16px 14px;
-  }
-  .feature-desc {
-    font-size: 13px;
-  }
-  .tabs {
-    gap: 40px;
-  }
-}
-
+/* ---------------- 响应式：≤1023 由「设计稿缩放」切回居中单卡布局 ---------------- */
 @media (max-width: 1023px) {
+  .login-page {
+    --u: 1px;
+    overflow-x: hidden;
+  }
   .login-shell {
+    display: flex;
+    width: 100%;
     justify-content: center;
     padding: 32px 24px 40px;
   }
   .intro {
     display: none;
   }
-  .auth {
-    flex: 0 1 520px;
-    /* 允许收缩到容器宽，避免子元素 min-content 撑破小屏 */
-    min-width: 0;
-    width: 100%;
-    padding: 0;
+  .login-art {
+    display: none;
   }
-  .login-bg::before {
+  .login-bg {
     background-image: url('/login/login-bg-sm.webp');
     background-position: center top;
   }
+  .auth {
+    position: static;
+    transform: none;
+    width: 100%;
+    max-width: 520px;
+  }
   .card {
     padding: 46px 40px 0;
+    border-radius: 14px;
     max-width: 100%;
   }
   .gate {
