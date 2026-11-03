@@ -152,6 +152,10 @@ Remove-Item Env:MYSQL_PWD
 # 本机 Redis 6 在 WSL 中（6380，密码 246790）；按实际环境调整 application.yml 或环境变量
 wsl -d Ubuntu-22.04 -u root service redis-server start
 
+# WSL 在无进程时会回收发行版（Redis 随之断开，健康检查显示 DEGRADED）：
+# 开发期保持一个常驻的 WSL 会话即可，或把 Redis 部署在常驻服务器上
+wsl -d Ubuntu-22.04 -- sleep infinity
+
 mvn spring-boot:run
 # 或：mvn clean package -DskipTests && java -jar target/zhiketong-server.jar
 ```

@@ -44,8 +44,9 @@ spring:
     port: ${REDIS_PORT:6380}
     password: ${REDIS_PASSWORD:246790}
     database: 0
-    # 命令超时不宜过长：Redis 不可用时鉴权链路降级要快（配合 JwtAuthenticationFilter 的 30 秒熔断）
-    timeout: 1000ms
+    # 命令超时不宜过长：Redis 不可用时鉴权链路降级要快（配合 JwtAuthenticationFilter 的 30 秒熔断）；
+    # WSL2 跨网络访问有抖动，1s 容易误判超时，默认放宽到 2s
+    timeout: ${REDIS_TIMEOUT:2000ms}
     lettuce:
       pool:
         max-active: 16
